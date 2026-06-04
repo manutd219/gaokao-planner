@@ -1729,6 +1729,39 @@
       return { text: "需补", cls: "warn" };
     }
 
+    function getHighSchoolSubjectStats(data, stats) {
+      const byKey = Object.fromEntries(stats.map((item) => [item.key, item]));
+      const scienceName = byKey.science?.name || "";
+      const scienceIncludesBiology = /科学|综合测试/.test(scienceName) && !/理化|理综|理科/.test(scienceName);
+      const pick = (keys) => {
+        const values = keys
+          .map((key) => byKey[key])
+          .filter((item) => item && item.ratio !== null)
+          .map((item) => item.ratio);
+        return values.length ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length) : null;
+      };
+      const inferred = (keys) => keys.some((key) => byKey[key]?.ratio !== null);
+      return [
+        { key: "chinese", name: "语文", ratio: pick(["chinese"]), source: "中考语文" },
+        { key: "math", name: "数学", ratio: pick(["math"]), source: "中考数学" },
+        { key: "english", name: "英语", ratio: pick(["english"]), source: "中考英语/外语" },
+        { key: "physics", name: "物理", ratio: pick(["physics", "science"]), source: inferred(["physics"]) ? "中考物理" : "由理化/科学折算" },
+        { key: "chemistry", name: "化学", ratio: pick(["chemistry", "science"]), source: inferred(["chemistry"]) ? "中考化学" : "由理化/科学折算" },
+        { key: "biology", name: "生物", ratio: pick(["biology", "bioGeo", "otherSubjects", ...(scienceIncludesBiology ? ["science"] : [])]), source: inferred(["biology"]) ? "中考生物" : "由生地/综合折算" },
+        { key: "history", name: "历史", ratio: pick(["history", "society"]), source: inferred(["history"]) ? "中考历史" : "由文综/社会折算" },
+        { key: "politics", name: "政治", ratio: pick(["politics", "society"]), source: inferred(["politics"]) ? "中考道法" : "由文综/社会折算" },
+        { key: "geography", name: "地理", ratio: pick(["geography", "bioGeo", "otherSubjects", "society"]), source: inferred(["geography"]) ? "中考地理" : "由生地/社会折算" }
+      ];
+    }
+
+    function getHighSubjectNames(data, stats, keys, threshold = 78, limit = 2) {
+      return getHighSchoolSubjectStats(data, stats)
+        .filter((item) => keys.includes(item.key) && item.ratio !== null && item.ratio < threshold)
+        .sort((a, b) => a.ratio - b.ratio)
+        .map((item) => item.name)
+        .slice(0, limit);
+    }
+
     const cityExamRules = {
       "广东-深圳": {
         mode: "广东 3+1+2",
@@ -1928,8 +1961,13 @@
     }
 
     function getPlan(data, stats) {
-      const keys = data.direction === "humanities" ? ["math", "english", "chinese"] : ["math", "physics", "chemistry", "science"];
-      const candidates = stats.filter((s) => keys.includes(s.key)).sort((a, b) => (a.ratio ?? 100) - (b.ratio ?? 100)).slice(0, 2);
+      const keys = data.direction === "humanities"
+        ? ["math", "english", "chinese", "history", "politics", "geography"]
+        : ["math", "english", "physics", "chemistry"];
+      const candidates = getHighSchoolSubjectStats(data, stats)
+        .filter((s) => keys.includes(s.key))
+        .sort((a, b) => (a.ratio ?? 100) - (b.ratio ?? 100))
+        .slice(0, 2);
       const focus = candidates.length ? candidates.map((s) => s.name).join(" + ") : "数学 + 英语";
       return {
         focus,
@@ -2001,7 +2039,7 @@
 
     function getHighSchoolPlan(data, stats, projection) {
       const selection = getSelection(data, stats);
-      const weak = stats.filter((s) => s.ratio !== null && s.ratio < 78 && ["math", "english", "physics", "chemistry", "science", "chinese"].includes(s.key)).map((s) => s.name).slice(0, 2);
+      const weak = getHighSubjectNames(data, stats, ["math", "english", "physics", "chemistry", "chinese"], 78, 2);
       const focus = weak.length ? weak.join("、") : "数学、物理";
       const selectText = selection.first === "历史" ? "历史类优势" : "物理类承接";
       return {
@@ -2021,7 +2059,7 @@
       const parentProfile = getParentCommunicationProfile(data, profile, projection, insight);
       const noteBridge = insight.summary ? `补充信息里提到：${insight.summary}。` : "补充信息暂未填写，先按成绩和地区做基础判断。";
       const concernBridge = insight.concerns.length ? `家长当前最在意的是${insight.concerns.join("、")}。` : "家长目前还没有明确表达顾虑。";
-      const weakFocus = plan.focus || "数学和理科/综合";
+      const weakFocus = plan.focus || "数学和物理/化学";
       return [
         ["家长沟通画像", `${parentProfile.type}。沟通重点：${parentProfile.strategy}\n\n${noteBridge}\n\n顾问注意：这一步不要急着给方案，先让家长感觉“你看懂了我家孩子”。如果家长愿意继续问，说明信任入口已经打开。`],
         ["开场第一句话", `建议先说：“我先不急着给您推荐课，先把孩子现在的总分位置、${target === "目标高中" ? "目标高中梯度" : `${target}的匹配度`}、以及暑假最该抓的科目讲清楚。这样您判断要不要学，会比单纯听课程介绍更准。”\n\n追问一句：“您现在更担心孩子进不了目标高中，还是担心进了高中以后跟不上？”`],
@@ -2066,6 +2104,14 @@
       return { type, style, strategy, objection };
     }
 
+    function normalizeHighSchoolTerms(text) {
+      return String(text || "")
+        .replace(/理化合卷|理化|理综|理科综合/g, "物理、化学")
+        .replace(/道德与法治|道德法治|道法/g, "政治")
+        .replace(/生地综合|生地|地生/g, "生物、地理")
+        .replace(/文科综合|文综|社会/g, "历史、政治、地理");
+    }
+
     function extractNotesInsight(notes) {
       const text = notes.trim();
       if (!text) return { summary: "", concerns: [], tags: [] };
@@ -2089,8 +2135,9 @@
         }
       });
       const clean = text.replace(/\s+/g, " ");
+      const summary = normalizeHighSchoolTerms(clean);
       return {
-        summary: clean.length > 58 ? `${clean.slice(0, 58)}...` : clean,
+        summary: summary.length > 58 ? `${summary.slice(0, 58)}...` : summary,
         concerns: [...new Set(concerns)].slice(0, 3),
         tags: [...new Set(tags)]
       };
@@ -2243,8 +2290,9 @@
       const levelExplain = getLevelExplanation(projection, plan);
       const highPlan = getHighSchoolPlan(data, stats, projection);
       const salesTalk = getSalesTalk(data, profile, projection, plan);
-      const weakNames = stats.filter((s) => s.ratio !== null && s.ratio < 74).map((s) => s.name).slice(0, 3);
-      const strongNames = stats.filter((s) => s.ratio !== null && s.ratio >= 88).map((s) => s.name).slice(0, 3);
+      const highSubjectStats = getHighSchoolSubjectStats(data, stats);
+      const weakNames = highSubjectStats.filter((s) => s.ratio !== null && s.ratio < 74).map((s) => s.name).slice(0, 3);
+      const strongNames = highSubjectStats.filter((s) => s.ratio !== null && s.ratio >= 88).map((s) => s.name).slice(0, 3);
       const onlyTotal = !stats.some((s) => s.hasScore);
 
       $("#reportLocation").textContent = `${data.province} ${data.city} · ${rule.location}`;
@@ -2284,27 +2332,27 @@
       $("#gaokaoEstimate").textContent = projection.estimate;
       $("#rankMethod").textContent = projection.method;
 
-      $("#subjectLabel").textContent = weakNames.length ? `${weakNames.join("、")}需暑假衔接` : "整体稳定，冲刺高一领先";
+      $("#subjectLabel").textContent = weakNames.length ? `${weakNames.join("、")}需暑假衔接` : "高中科目整体稳定";
       $("#subjectList").innerHTML = onlyTotal ? `
         <div class="mini-card">
           <strong>只填写了总分</strong>
-          <p>当前可以做总分层次预估和高中路径规划；如需更准的选科建议，建议补充数学、英语、理科/综合科目成绩。</p>
+          <p>当前可以做总分层次预估和高中路径规划；如需更准的选科建议，建议补充数学、英语、物理、化学等高中对应科目成绩。</p>
         </div>
-      ` : stats.map((item) => {
+      ` : highSubjectStats.map((item) => {
         const level = levelFor(item.ratio);
         return `
           <div class="subject-row">
             <strong>${item.name}</strong>
             <div class="bar-track"><div class="bar-fill" style="width:${item.ratio === null ? 0 : Math.min(100, item.ratio)}%"></div></div>
-            <span class="level ${level.cls}">${level.text}</span>
+            <span class="level ${level.cls}" title="${item.source}">${level.text}</span>
           </div>
         `;
       }).join("");
       $("#subjectInsight").textContent = onlyTotal
-        ? `目前只有总分，报告先按${data.city}总分口径判断升学层次。下一步建议补齐数学、英语、理科/综合三类成绩，否则选科判断只能给方向，不能精确到组合风险。`
+        ? `目前只有总分，报告先按${data.city}总分口径判断升学层次。下一步建议补齐数学、英语、物理、化学等高中对应科目成绩，否则选科判断只能给方向，不能精确到组合风险。`
         : weakNames.length
-        ? `${strongNames.length ? `${strongNames.join("、")}能支撑高一开局，` : ""}${weakNames.join("、")}已经进入高中选科关键区。建议不要等开学后再补，暑假先把核心概念和过程分析打通。`
-        : "各科基础较均衡，暑假目标不是简单提前学，而是建立高中题型框架和稳定复盘习惯，争取开学第一次月考建立信心。";
+        ? `${strongNames.length ? `${strongNames.join("、")}能支撑高一开局，` : ""}${weakNames.join("、")}已经进入高中选科关键区。这里按高中高考科目呈现，中考合卷成绩已拆分映射到对应科目；暑假先把核心概念和过程分析打通。`
+        : "高中对应科目基础较均衡，暑假目标不是简单提前学，而是建立高中题型框架和稳定复盘习惯，争取开学第一次月考建立信心。";
 
       $("#comboTag").textContent = selection.tag;
       $("#comboA").textContent = selection.a[0];
@@ -2353,7 +2401,7 @@
         rankTag: projection.tag,
         rankEstimate: projection.rankText,
         gaokaoEstimate: projection.estimate,
-        subjectLabel: weakNames.length ? `${weakNames.join("、")}需暑假衔接` : "整体稳定",
+        subjectLabel: weakNames.length ? `${weakNames.join("、")}需暑假衔接` : "高中科目整体稳定",
         onlyTotal,
         generatedAt: new Date().toISOString()
       };
