@@ -510,9 +510,70 @@
       text-overflow: ellipsis;
     }
 
+    .lookup-panel,
+    .record-picker {
+      padding: 18px;
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+      box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+    }
+
+    .lookup-box {
+      display: grid;
+      gap: 16px;
+    }
+
+    .lookup-box h2 {
+      color: var(--ink);
+      font-size: 22px;
+    }
+
+    .lookup-search,
+    .record-picker {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: end;
+    }
+
+    .lookup-search input,
+    .record-picker select {
+      width: 100%;
+      color: var(--ink);
+      background: #ffffff;
+      border-color: #cbd5e1;
+    }
+
+    .lookup-result {
+      min-height: 76px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      color: #40506a;
+      background: #f8fafc;
+      line-height: 1.6;
+    }
+
+    .record-picker {
+      width: min(920px, 100%);
+      margin: 0 auto 14px;
+      box-shadow: none;
+    }
+
+    .record-picker .btn-secondary {
+      color: var(--ink);
+      background: #eef2f7;
+      border-color: #cbd5e1;
+    }
+
     .report-wrap {
-      display: flex;
+      display: none;
+      flex-direction: column;
+      align-items: center;
       justify-content: center;
+    }
+
+    .report-wrap.active {
+      display: flex;
     }
 
     .report {
@@ -894,6 +955,8 @@
       .sales-grid,
       .auth-strip,
       .auth-form,
+      .lookup-search,
+      .record-picker,
       .level-explain {
         grid-template-columns: 1fr;
       }
@@ -942,6 +1005,7 @@
 
       <nav class="nav-menu" aria-label="系统导航">
         <button class="nav-button active" type="button" data-view="query">查询页</button>
+        <button class="nav-button" type="button" data-view="lookup">用户查询</button>
         <button class="nav-button" type="button" data-view="plan">用户规划</button>
         <button class="nav-button" type="button" data-view="sales">销售建议</button>
         <button class="nav-button" type="button" data-view="backend" id="backendNav" hidden>后台数据</button>
@@ -1066,7 +1130,27 @@
         <div id="queryMount"></div>
       </section>
 
+      <section class="lookup-panel view-panel" id="lookupView">
+        <div class="lookup-box">
+          <div>
+            <h2>用户查询</h2>
+            <p class="status-text">输入学生姓名，系统会调用当前账号最近一次查询记录。管理员可查全部，销售只查自己的记录。</p>
+          </div>
+          <div class="lookup-search">
+            <input id="userLookupInput" placeholder="输入学生姓名，如：陈同学" />
+            <button class="btn btn-primary" id="loadLookupBtn" type="button">调出最近记录</button>
+          </div>
+          <div id="lookupResult" class="lookup-result">暂无查询，请输入学生姓名。</div>
+        </div>
+      </section>
+
       <div class="report-wrap view-panel" id="planView">
+        <div class="record-picker" data-html2canvas-ignore="true">
+          <label>最近10个查询用户
+            <select id="planRecentSelect"></select>
+          </label>
+          <button class="btn btn-secondary" id="planLoadRecentBtn" type="button">调出记录</button>
+        </div>
         <article class="report" id="reportCard">
           <header class="report-header">
             <div>
@@ -1218,6 +1302,12 @@
         </article>
       </div>
       <section class="sales-panel view-panel" id="salesView">
+        <div class="record-picker" data-html2canvas-ignore="true">
+          <label>最近10个查询用户
+            <select id="salesRecentSelect"></select>
+          </label>
+          <button class="btn btn-secondary" id="salesLoadRecentBtn" type="button">调出记录</button>
+        </div>
         <div class="section-title">
           <h2>销售沟通建议</h2>
           <span class="pill">内部参考，不进入下载图</span>
@@ -1282,6 +1372,7 @@
     const $ = (id) => document.querySelector(id);
     const viewMeta = {
       query: ["查询页", "填写学生中考成绩、地区和补充信息，点击查看规划。"],
+      lookup: ["用户查询", "输入学生姓名，快速调出当前账号最近一次查询记录。"],
       plan: ["用户规划", "给家长看的规划图，可下载为图片转发。"],
       sales: ["销售建议", "内部沟通参考，帮助销售判断怎么开场、怎么说明紧迫性。"],
       backend: ["后台数据", "管理员查看所有销售保存的咨询记录。"]
@@ -1351,6 +1442,7 @@
       $("#viewSubtitle").textContent = subtitle;
       $("#downloadFamilyTop").style.display = view === "plan" ? "block" : "none";
       $("#downloadSalesTop").style.display = view === "sales" ? "block" : "none";
+      if (["lookup", "plan", "sales"].includes(view) && currentUser) loadRecords();
       if (view === "backend") loadRecords();
     }
 
@@ -1398,7 +1490,7 @@
         currentUser = payload.user;
         updateAuthUI();
         showView("query");
-        if (currentUser.role === "admin") await loadRecords();
+        await loadRecords();
       } catch {
         authToken = "";
         currentUser = null;
@@ -2294,12 +2386,16 @@
       }
       try {
         const payload = collectRecord();
-        await apiFetch("/api/records", {
+        const saved = await apiFetch("/api/records", {
           method: "POST",
           body: JSON.stringify(payload)
         });
+        if (saved.record) {
+          allRecords = [saved.record, ...allRecords.filter((record) => record.id !== saved.record.id)];
+          renderRecentSelectors();
+        }
         setBackendMessage(`已保存${payload.form.name || "学生"}的规划记录。`);
-        if (currentUser.role === "admin") await loadRecords();
+        await loadRecords();
         return true;
       } catch (error) {
         setBackendMessage(error.message);
@@ -2327,6 +2423,105 @@
         record.owner?.name,
         record.status
       ].join(" ").toLowerCase();
+    }
+
+    function recentRecords(limit = 10) {
+      return [...allRecords]
+        .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
+        .slice(0, limit);
+    }
+
+    function recordLabel(record) {
+      const formData = record.form || {};
+      const analysis = record.analysis || {};
+      const name = formData.name || "未命名学生";
+      const region = [formData.province, formData.city].filter(Boolean).join("-");
+      const total = analysis.total ? `${analysis.total}/${analysis.totalMax || ""}` : (formData.totalManual || "未填总分");
+      return `${name} · ${region || "未填地区"} · ${total} · ${formatTime(record.createdAt)}`;
+    }
+
+    function renderRecentSelectors() {
+      const options = recentRecords(10).map((record) => `<option value="${record.id}">${escapeHtml(recordLabel(record))}</option>`).join("");
+      ["#planRecentSelect", "#salesRecentSelect"].forEach((selector) => {
+        const select = $(selector);
+        if (!select) return;
+        select.innerHTML = options || `<option value="">暂无历史记录</option>`;
+      });
+      renderLookupResult();
+    }
+
+    function getRecordById(id) {
+      return allRecords.find((record) => record.id === id) || null;
+    }
+
+    function getSubjectValueMap(record) {
+      const values = {};
+      (record.subjects || []).forEach((subject) => {
+        if (subject && subject.key && subject.hasScore) values[subject.key] = subject.score;
+      });
+      Object.entries(record.form || {}).forEach(([key, value]) => {
+        if (Number.isFinite(Number(value)) && key !== "totalManual") values[key] = Number(value);
+      });
+      return values;
+    }
+
+    function loadRecordIntoForm(record, targetView = "plan") {
+      if (!record) return;
+      const formData = record.form || {};
+      const subjectValues = getSubjectValueMap(record);
+      if (formData.province) form.elements.province.value = formData.province;
+      updateCityOptions(formData.city);
+      renderScoreFields(subjectValues);
+
+      ["name", "school", "direction", "notes", "totalManual"].forEach((name) => {
+        if (form.elements[name] && formData[name] !== undefined) form.elements[name].value = formData[name];
+      });
+      scoreFields.querySelectorAll("input[data-score-field='1']").forEach((input) => {
+        if (subjectValues[input.name] !== undefined) input.value = subjectValues[input.name];
+      });
+      render();
+      showView(targetView);
+    }
+
+    function loadSelectedRecent(selectId, targetView) {
+      const id = $(selectId)?.value;
+      const record = id ? getRecordById(id) : null;
+      if (record) loadRecordIntoForm(record, targetView);
+    }
+
+    function findLatestRecordByName(name) {
+      const keyword = String(name || "").trim().toLowerCase();
+      if (!keyword) return null;
+      const sorted = [...allRecords].sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+      return sorted.find((record) => String(record.form?.name || "").trim().toLowerCase() === keyword)
+        || sorted.find((record) => String(record.form?.name || "").toLowerCase().includes(keyword));
+    }
+
+    function renderLookupResult() {
+      const node = $("#lookupResult");
+      if (!node) return;
+      const keyword = ($("#userLookupInput")?.value || "").trim();
+      if (!keyword) {
+        node.textContent = allRecords.length ? "请输入学生姓名，将优先调用最近一次同名记录。" : "当前账号暂无历史记录。";
+        return;
+      }
+      const record = findLatestRecordByName(keyword);
+      if (!record) {
+        node.textContent = `没有找到“${keyword}”的历史记录。`;
+        return;
+      }
+      const formData = record.form || {};
+      const analysis = record.analysis || {};
+      node.innerHTML = `
+        <strong>${escapeHtml(formData.name || "未命名学生")}</strong>
+        <p>${escapeHtml([formData.province, formData.city].filter(Boolean).join(" "))} · ${escapeHtml(formatTime(record.createdAt))}</p>
+        <p>中考总分：${escapeHtml(analysis.total ? `${analysis.total} / ${analysis.totalMax || "-"}` : (formData.totalManual || "-"))}；高考目标层次：${escapeHtml(analysis.gaokaoLevel || "-")}；暑假重点：${escapeHtml(analysis.summerFocus || "-")}</p>
+      `;
+    }
+
+    function loadLookupRecord() {
+      const record = findLatestRecordByName($("#userLookupInput").value);
+      if (record) loadRecordIntoForm(record, "plan");
     }
 
     function getFilteredRecords() {
@@ -2393,19 +2588,19 @@
     async function loadRecords() {
       if (!currentUser) {
         renderRecords();
-        return;
-      }
-      if (currentUser.role !== "admin") {
-        allRecords = [];
-        setBackendMessage("只有管理员可以查看后台数据。");
-        renderRecords();
+        renderRecentSelectors();
         return;
       }
       try {
         const payload = await apiFetch("/api/records");
         allRecords = payload.records || [];
-        setBackendMessage(`管理员可查看全部记录，共 ${allRecords.length} 条。`);
+        if (currentUser.role === "admin") {
+          setBackendMessage(`管理员可查看全部记录，共 ${allRecords.length} 条。`);
+        } else if ($("#backendView").classList.contains("active")) {
+          setBackendMessage("只有管理员可以查看后台数据。");
+        }
         renderRecords();
+        renderRecentSelectors();
       } catch (error) {
         setBackendMessage(error.message);
       }
@@ -2484,7 +2679,7 @@
         localStorage.setItem("gaokao_planner_token", authToken);
         updateAuthUI();
         showView("query");
-        if (currentUser.role === "admin") await loadRecords();
+        await loadRecords();
       } catch (error) {
         $("#loginHint").textContent = error.message;
       }
@@ -2500,11 +2695,21 @@
       localStorage.removeItem("gaokao_planner_token");
       updateAuthUI();
       setBackendMessage("已退出登录。");
+      renderRecentSelectors();
       renderRecords();
       showView("query");
     });
 
     document.querySelector("#saveRecordBtn").addEventListener("click", viewPlanning);
+    document.querySelector("#planLoadRecentBtn").addEventListener("click", () => loadSelectedRecent("#planRecentSelect", "plan"));
+    document.querySelector("#salesLoadRecentBtn").addEventListener("click", () => loadSelectedRecent("#salesRecentSelect", "sales"));
+    document.querySelector("#planRecentSelect").addEventListener("change", () => loadSelectedRecent("#planRecentSelect", "plan"));
+    document.querySelector("#salesRecentSelect").addEventListener("change", () => loadSelectedRecent("#salesRecentSelect", "sales"));
+    document.querySelector("#loadLookupBtn").addEventListener("click", loadLookupRecord);
+    document.querySelector("#userLookupInput").addEventListener("input", renderLookupResult);
+    document.querySelector("#userLookupInput").addEventListener("keydown", (event) => {
+      if (event.key === "Enter") loadLookupRecord();
+    });
     document.querySelector("#refreshRecordsBtn").addEventListener("click", loadRecords);
     document.querySelector("#exportRecordsBtn").addEventListener("click", exportRecords);
     document.querySelector("#recordSearch").addEventListener("input", renderRecords);

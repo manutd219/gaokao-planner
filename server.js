@@ -298,7 +298,7 @@ async function handleApi(req, res, url) {
   }
 
   if (req.method === "GET" && url.pathname === "/api/records") {
-    const user = requireAdmin(req, res);
+    const user = requireUser(req, res);
     if (!user) return;
     const records = visibleRecords(await readRecords(), user)
       .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
