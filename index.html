@@ -1082,7 +1082,7 @@
             <div class="score-ring">
               <div>
                 <strong id="fitScore">82</strong>
-                <span>目标距离分</span>
+                <span>高中衔接准备度</span>
               </div>
             </div>
           </header>
@@ -1113,15 +1113,15 @@
 
             <div class="fit-explain">
               <div>
-                <strong id="fitExplainTitle">88 分：比较匹配，但暑假不能松</strong>
-                <p id="fitExplainCopy">这个分数不是录取概率，而是用当前中考总分和目标高中层级，判断孩子离目标高中还有多远。分数越高，说明当前基础越接近目标要求。</p>
+                <strong id="fitExplainTitle">88 分：基础较好，但暑假不能松</strong>
+                <p id="fitExplainCopy">这个分数不是目标高中的录取概率，也不和目标高中直接挂钩。它是根据当前总分、各科均衡度和高中学习难度，判断孩子开学后承接高中节奏的准备程度。</p>
               </div>
               <ol class="fit-scale">
-                <li>90-100：目标很稳，重点看高一排名保持。</li>
-                <li>80-89：比较匹配，暑假要提前衔接。</li>
-                <li>70-79：可以冲刺，需要明确补分科目。</li>
-                <li>60-69：风险较高，建议设置稳妥高中。</li>
-                <li>60 以下：目标偏高，需要重新做梯度。</li>
+                <li>90-100：基础强，重点是高一开局保持排名。</li>
+                <li>80-89：基础较好，暑假要提前完成方法衔接。</li>
+                <li>70-79：有基础但短板明显，需要锁定关键科目。</li>
+                <li>60-69：衔接风险较高，建议先补高中核心方法。</li>
+                <li>60 以下：基础承接压力大，需要先做基础重建。</li>
               </ol>
             </div>
 
@@ -1540,6 +1540,72 @@
       return cities.find((city) => city.name === data.city) || cities[0];
     }
 
+    const rankScoreAnchors = {
+      "广东-深圳": {
+        max: 610,
+        source: "按你提供的深圳中考资料库校准：471 分约按市排前 55% 处理，并参考 A/B+ 等位线做区间估算。",
+        anchors: [
+          [585, 0.01],
+          [565, 0.05],
+          [526, 0.22],
+          [500, 0.40],
+          [471, 0.55],
+          [430, 0.72],
+          [380, 0.88]
+        ]
+      }
+    };
+
+    const rankRatioAnchors = {
+      "广东-广州": { source: "广州暂按地区经验锚点估算，建议后续接入本地一分一段表继续校准。", anchors: [[0.92, 0.03], [0.87, 0.10], [0.80, 0.25], [0.73, 0.45], [0.66, 0.65], [0.56, 0.84]] },
+      "北京-北京": { source: "北京暂按地区经验锚点估算，建议后续接入本地一分一段表继续校准。", anchors: [[0.91, 0.04], [0.86, 0.12], [0.79, 0.28], [0.72, 0.48], [0.64, 0.68], [0.54, 0.86]] },
+      "上海-上海": { source: "上海暂按地区经验锚点估算，建议后续接入本地一分一段表继续校准。", anchors: [[0.92, 0.04], [0.87, 0.12], [0.80, 0.30], [0.73, 0.50], [0.65, 0.70], [0.55, 0.87]] },
+      "四川-成都": { source: "成都暂按地区经验锚点估算，建议后续接入本地一分一段表继续校准。", anchors: [[0.90, 0.04], [0.85, 0.12], [0.78, 0.28], [0.70, 0.50], [0.62, 0.72], [0.52, 0.88]] },
+      "浙江-杭州": { source: "杭州暂按地区经验锚点估算，建议后续接入本地一分一段表继续校准。", anchors: [[0.91, 0.04], [0.86, 0.13], [0.79, 0.30], [0.72, 0.50], [0.64, 0.70], [0.54, 0.87]] },
+      default: { source: "其他地区暂按通用分数率锚点估算，可继续补充当地一分一段表、录取线和人数后校准。", anchors: [[0.92, 0.04], [0.86, 0.12], [0.80, 0.26], [0.73, 0.45], [0.66, 0.64], [0.56, 0.84]] }
+    };
+
+    function interpolateAnchors(value, anchors) {
+      const sorted = [...anchors].sort((a, b) => b[0] - a[0]);
+      if (value >= sorted[0][0]) return sorted[0][1];
+      if (value <= sorted[sorted.length - 1][0]) return sorted[sorted.length - 1][1];
+      for (let index = 0; index < sorted.length - 1; index += 1) {
+        const [highScore, highPercent] = sorted[index];
+        const [lowScore, lowPercent] = sorted[index + 1];
+        if (value <= highScore && value >= lowScore) {
+          const progress = (highScore - value) / (highScore - lowScore);
+          return highPercent + progress * (lowPercent - highPercent);
+        }
+      }
+      return sorted[sorted.length - 1][1];
+    }
+
+    function formatPercentile(percentile) {
+      if (percentile <= 0.01) return "前 1%";
+      if (percentile < 0.1) return `前 ${Math.round(percentile * 1000) / 10}%`;
+      return `前 ${Math.round(percentile * 100)}%`;
+    }
+
+    function estimateRankPercentile(data, total, totalMax) {
+      const key = `${data.province}-${data.city}`;
+      const scoreAnchor = rankScoreAnchors[key];
+      if (scoreAnchor) {
+        const normalizedScore = total <= scoreAnchor.max ? total : total * scoreAnchor.max / totalMax;
+        return {
+          percentile: Math.max(0.006, Math.min(0.92, interpolateAnchors(normalizedScore, scoreAnchor.anchors))),
+          method: scoreAnchor.source,
+          basis: `已按 ${scoreAnchor.max} 分口径识别，校准分约 ${Math.round(normalizedScore)} 分。`
+        };
+      }
+      const ratio = Math.min(0.99, Math.max(0, total / totalMax));
+      const ratioAnchor = rankRatioAnchors[key] || rankRatioAnchors.default;
+      return {
+        percentile: Math.max(0.006, Math.min(0.92, interpolateAnchors(ratio, ratioAnchor.anchors))),
+        method: ratioAnchor.source,
+        basis: `当前按总分率 ${Math.round(ratio * 1000) / 10}% 估算。`
+      };
+    }
+
     function getScoreProfile(data) {
       const key = cityTemplateMap[`${data.province}-${data.city}`] || provinceTemplateMap[data.province] || "generic750";
       return subjectTemplates[key] || subjectTemplates.generic750;
@@ -1703,13 +1769,11 @@
     }
 
     function getGaokaoProjection(data, stats, total, totalMax) {
-      const ratio = Math.min(0.99, Math.max(0, total / totalMax));
       const cityMeta = getCityMeta(data);
-      const targetText = data.school || "目标高中";
-      const difficultyBoost = /四大|重点|名校|实验|外国语|一中|附中/.test(targetText) ? 0.012 : 0;
-      const estimatedPercentile = Math.max(0.006, Math.min(0.68, Math.pow(1 - ratio, 1.65) + difficultyBoost));
+      const rankEstimate = estimateRankPercentile(data, total, totalMax);
+      const estimatedPercentile = rankEstimate.percentile;
       const rank = Math.max(1, Math.round(cityMeta.cohort * estimatedPercentile));
-      const percentText = estimatedPercentile < 0.01 ? "前 1%" : `前 ${Math.round(estimatedPercentile * 100)}%`;
+      const percentText = formatPercentile(estimatedPercentile);
       const selectionClass = getSelection(data, stats).first === "历史" ? "历史类" : "物理/综合类";
 
       let level = "本科";
@@ -1732,7 +1796,7 @@
         level,
         rankText: `${data.city || cityMeta.name}约 ${cityMeta.cohort.toLocaleString("zh-CN")} 名中考生，当前总分约处于市排${percentText}，约第 ${rank.toLocaleString("zh-CN")} 名附近。`,
         estimate: advice,
-        method: "此处是 demo 估算。正式版建议按地区、年份、选科、分数/位次接入近年一分一段表，再校准到具体院校层次。",
+        method: `${rankEstimate.method} ${rankEstimate.basis} 这个结果用于家长沟通中的层次判断，不等同于正式录取位次。`,
         tag: `参考：市排${percentText}`
       };
     }
@@ -1896,35 +1960,41 @@
       });
     }
 
-    function getFitExplanation(fit, targetText) {
-      const target = targetText === "未填写" ? "目标高中" : targetText;
+    function getReadinessScore(ratio, stats) {
+      const ratios = stats.filter((item) => item.ratio !== null).map((item) => item.ratio);
+      const balancePenalty = ratios.length > 1 ? Math.min(10, Math.round((Math.max(...ratios) - Math.min(...ratios)) / 4)) : 0;
+      const missingPenalty = ratios.length ? 0 : 4;
+      return Math.max(45, Math.min(96, Math.round(ratio * 100 - balancePenalty - missingPenalty)));
+    }
+
+    function getFitExplanation(fit) {
       if (fit >= 90) {
         return {
-          title: `${fit} 分：和${target}高度匹配`,
-          copy: "这个分数说明孩子当前基础已经比较接近目标要求。接下来不是盲目加量，而是高一开学后守住校内排名，并尽快确定优势选科。"
+          title: `${fit} 分：基础强，关键是高一保持排名`,
+          copy: "这个分数说明孩子当前基础比较扎实。接下来不是盲目加量，而是提前适应高中题型、课堂节奏和复盘方式，避免高一开学后优势被快速抹平。"
         };
       }
       if (fit >= 80) {
         return {
-          title: `${fit} 分：比较匹配，但暑假不能松`,
-          copy: "这个分数说明孩子有冲目标高中的基础，但高中难度会明显上台阶。暑假要提前做数学、英语、理科/综合的衔接，避免开学第一次月考掉队。"
+          title: `${fit} 分：基础较好，但暑假不能松`,
+          copy: "这个分数说明孩子有不错基础，但高中难度会明显上台阶。暑假要提前做数学、英语、理科/综合的衔接，避免开学第一次月考出现明显落差。"
         };
       }
       if (fit >= 70) {
         return {
-          title: `${fit} 分：可以冲刺，需要补关键科目`,
-          copy: "这个分数说明目标还有挑战。家长不要只看总分，要尽快找出最影响升学的短板科目，用暑假做集中突破，同时准备一个更稳妥的高中选择。"
+          title: `${fit} 分：有基础，但短板会影响高一开局`,
+          copy: "这个分数说明孩子不是没有基础，但需要尽快找出最影响高中承接的短板科目。暑假适合集中处理两门关键科目，而不是平均用力。"
         };
       }
       if (fit >= 60) {
         return {
-          title: `${fit} 分：风险偏高，建议做目标梯度`,
-          copy: "这个分数说明距离目标高中还有明显差距。建议同时设置冲刺、稳妥、保底三个层级，暑假计划先抓最能提分的两门课。"
+          title: `${fit} 分：衔接风险偏高，需要提前干预`,
+          copy: "这个分数说明孩子进入高中后容易在新课速度、题目综合度和作业量上感到吃力。暑假计划要先抓最能影响开学听课质量的两门课。"
         };
       }
       return {
-        title: `${fit} 分：目标偏高，需要重新评估`,
-        copy: "这个分数说明当前目标可能过高。建议先稳定高中入口成绩，再根据后续诊断结果调整目标，不要只盯一个学校。"
+        title: `${fit} 分：承接压力大，建议先做基础重建`,
+        copy: "这个分数说明孩子当前基础承接高中内容会比较吃力。建议先稳定核心学科基础，再逐步进入高中预习，不要一开始就追求学太快。"
       };
     }
 
@@ -1937,7 +2007,7 @@
       const total = data.totalManual > 0 ? Math.min(data.totalManual, profileConfig.total) : subjectTotal;
       const ratio = total / profileConfig.total;
       const targetText = data.school || "未填写";
-      const fit = Math.max(52, Math.min(96, Math.round(ratio * 92 + (/四大|重点|名校|实验|外国语|一中|附中/.test(targetText) ? -4 : 4))));
+      const fit = getReadinessScore(ratio, stats);
       const profile = getProfile(data, stats, total, profileConfig.total);
       const selection = getSelection(data, stats);
       const plan = getPlan(data, stats);
@@ -1952,7 +2022,7 @@
       $("#reportTitle").textContent = `${data.name || "学生"}初升高选科与暑假规划`;
       $("#reportSummary").textContent = `${profileConfig.note}。中考之后选科才是关键，暑假是从初中“记忆+模仿”切换到高中“推理+构建”的窗口。`;
       $("#fitScore").textContent = fit;
-      const fitExplain = getFitExplanation(fit, targetText);
+      const fitExplain = getFitExplanation(fit);
       $("#fitExplainTitle").textContent = fitExplain.title;
       $("#fitExplainCopy").textContent = fitExplain.copy;
       $("#totalScore").textContent = `${total} / ${profileConfig.total}`;
@@ -2041,6 +2111,7 @@
         totalMax: profileConfig.total,
         ratio: Math.round(ratio * 1000) / 10,
         fit,
+        readiness: fit,
         fitExplain: fitExplain.title,
         province: data.province,
         city: data.city,
