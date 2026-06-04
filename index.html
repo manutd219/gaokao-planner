@@ -2015,16 +2015,16 @@
       const aliases = {
         chinese: ["语文"],
         math: ["数学"],
-        english: ["英语"],
+        english: ["英语", "外语", "英文"],
         physics: ["物理"],
         chemistry: ["化学"],
-        science: ["理化合卷", "理化", "理综", "理科综合", "科学"],
+        science: ["理化合卷", "理化", "理综", "理科综合", "科学", "综合测试"],
         history: ["历史"],
-        politics: ["道法", "政治", "道德与法治"],
-        pe: ["体育"],
+        politics: ["道法", "政治", "道德与法治", "道德法治"],
+        pe: ["体育", "体育与健康"],
         otherSubjects: ["其他科目", "其他科目合计", "八年级科目", "八年级考试", "地生信", "地理生物信息", "地理生物信息科技"],
         geography: ["地理"],
-        biology: ["生物"],
+        biology: ["生物", "生物学"],
         information: ["信息科技", "信息技术"],
         bioGeo: ["生地", "地生", "生地综合"],
         society: ["社会", "文综", "文科综合"],
@@ -2055,6 +2055,31 @@
       return result;
     }
 
+    function getAutoTotalFromParsedScores(parsed) {
+      const scoreKeys = [...scoreFields.querySelectorAll("input[data-score-field='1']")]
+        .map((input) => input.name)
+        .filter((key) => Number.isFinite(parsed[key]));
+      if (!scoreKeys.length) return null;
+
+      const covered = new Set(scoreKeys);
+      if (covered.has("science")) {
+        covered.delete("physics");
+        covered.delete("chemistry");
+      }
+      if (covered.has("bioGeo")) {
+        covered.delete("biology");
+        covered.delete("geography");
+      }
+      if (covered.has("otherSubjects")) {
+        covered.delete("biology");
+        covered.delete("geography");
+        covered.delete("information");
+      }
+
+      const total = [...covered].reduce((sum, key) => sum + Number(parsed[key] || 0), 0);
+      return total > 0 ? total : null;
+    }
+
     function applyScoresFromNotes() {
       const parsed = extractScoresFromText(form.elements.notes.value);
       if (Number.isFinite(parsed.totalManual)) {
@@ -2066,6 +2091,11 @@
           input.value = Math.min(parsed[input.name], max);
         }
       });
+      const autoTotal = getAutoTotalFromParsedScores(parsed);
+      if (!Number.isFinite(parsed.totalManual) && Number.isFinite(autoTotal)) {
+        const maxTotal = Number(form.elements.totalManual.max || Infinity);
+        form.elements.totalManual.value = Math.min(autoTotal, maxTotal);
+      }
     }
 
     function getReadinessScore(ratio, stats) {
