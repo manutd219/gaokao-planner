@@ -1088,6 +1088,7 @@
       </form>
 
       <div class="actions">
+        <button class="btn btn-secondary" id="resetFormBtn" type="button">重置填写</button>
         <button class="btn btn-primary" id="saveRecordBtn" type="button">查询规划</button>
       </div>
     </aside>
@@ -2651,6 +2652,19 @@
       render();
     });
 
+    function resetForm() {
+      form.elements.name.value = "";
+      form.elements.school.value = "";
+      form.elements.notes.value = "";
+      form.elements.totalManual.value = "";
+      form.elements.direction.value = "unknown";
+      form.elements.province.value = "广东";
+      updateCityOptions("深圳");
+      renderScoreFields();
+      render();
+      showView("query");
+    }
+
     document.querySelector("#loginForm").addEventListener("submit", async (event) => {
       event.preventDefault();
       const loginData = Object.fromEntries(new FormData(event.currentTarget).entries());
@@ -2686,6 +2700,7 @@
     });
 
     document.querySelector("#saveRecordBtn").addEventListener("click", viewPlanning);
+    document.querySelector("#resetFormBtn").addEventListener("click", resetForm);
     document.querySelector("#planLoadRecentBtn").addEventListener("click", () => loadSelectedRecent("#planRecentSelect", "plan"));
     document.querySelector("#salesLoadRecentBtn").addEventListener("click", () => loadSelectedRecent("#salesRecentSelect", "sales"));
     document.querySelector("#planRecentSelect").addEventListener("change", () => loadSelectedRecent("#planRecentSelect", "plan"));
