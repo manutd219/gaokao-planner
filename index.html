@@ -40,7 +40,63 @@
     .app {
       min-height: 100dvh;
       display: grid;
-      grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+      grid-template-columns: 260px minmax(0, 1fr);
+    }
+
+    .login-page {
+      min-height: 100dvh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background:
+        linear-gradient(135deg, rgba(79, 115, 185, 0.14), rgba(31, 143, 111, 0.12)),
+        #eef3f8;
+    }
+
+    .login-card {
+      width: min(460px, 100%);
+      padding: 34px;
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+      box-shadow: 0 24px 70px rgba(15, 23, 42, 0.13);
+    }
+
+    .login-card h1 {
+      color: var(--ink);
+      font-size: 28px;
+    }
+
+    .login-card .tagline {
+      color: var(--muted);
+      margin-bottom: 22px;
+    }
+
+    .login-card label {
+      color: #344054;
+      font-size: 13px;
+    }
+
+    .login-card input {
+      color: var(--ink);
+      background: #ffffff;
+      border-color: #cbd5e1;
+    }
+
+    .login-card .btn {
+      width: 100%;
+      margin-top: 8px;
+    }
+
+    .login-card .auth-status {
+      margin-top: 14px;
+    }
+
+    body:not(.logged-in) .app {
+      display: none;
+    }
+
+    body.logged-in .login-page {
+      display: none;
     }
 
     .sidebar {
@@ -49,6 +105,38 @@
       padding: 24px;
       overflow: auto;
       max-height: 100dvh;
+    }
+
+    .nav-menu {
+      display: grid;
+      gap: 10px;
+      margin-top: 24px;
+    }
+
+    .nav-button {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      min-height: 46px;
+      padding: 0 14px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 8px;
+      color: #dbeafe;
+      background: rgba(255, 255, 255, 0.07);
+      cursor: pointer;
+      font-weight: 800;
+      text-align: left;
+    }
+
+    .nav-button.active {
+      color: var(--ink);
+      background: var(--gold);
+      border-color: var(--gold);
+    }
+
+    .nav-button[hidden] {
+      display: none;
     }
 
     .brand {
@@ -196,6 +284,103 @@
       font-size: 14px;
     }
 
+    .user-chip {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: flex-end;
+      color: #40506a;
+      font-size: 14px;
+    }
+
+    .workspace-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .workspace-actions .btn-secondary {
+      color: var(--ink);
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+    }
+
+    .workspace-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      width: min(1280px, 100%);
+      margin: 0 auto 16px;
+    }
+
+    .workspace-title h2 {
+      color: var(--ink);
+      font-size: 26px;
+    }
+
+    .workspace-title p {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .view-panel {
+      display: none;
+      width: min(1280px, 100%);
+      margin: 0 auto;
+    }
+
+    .view-panel.active {
+      display: block;
+    }
+
+    .query-panel {
+      padding: 24px;
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+      box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+    }
+
+    .query-panel .form-section {
+      margin-top: 0;
+      padding-top: 0;
+      border-top: 0;
+    }
+
+    .query-panel .form-section + .form-section {
+      margin-top: 20px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+    }
+
+    .query-panel label {
+      color: #344054;
+    }
+
+    .query-panel input,
+    .query-panel select,
+    .query-panel textarea {
+      color: var(--ink);
+      background: #ffffff;
+      border-color: #cbd5e1;
+    }
+
+    .query-panel .actions {
+      position: static;
+      grid-template-columns: repeat(2, minmax(150px, 1fr));
+      margin: 18px 0 0;
+      padding: 0;
+      background: transparent;
+    }
+
+    .query-panel .btn-secondary {
+      color: var(--ink);
+      background: #eef2f7;
+      border-color: #cbd5e1;
+    }
+
     .auth-strip,
     .backend-panel {
       width: min(1280px, 100%);
@@ -207,7 +392,7 @@
     }
 
     .auth-strip {
-      display: grid;
+      display: none;
       grid-template-columns: minmax(0, 1fr) auto;
       gap: 14px;
       align-items: end;
@@ -669,6 +854,18 @@
       font-weight: 800;
     }
 
+    .view-panel:not(.active) {
+      display: none !important;
+    }
+
+    .view-panel.active {
+      display: block;
+    }
+
+    .report-wrap.view-panel.active {
+      display: flex;
+    }
+
     @media (max-width: 980px) {
       .app {
         grid-template-columns: 1fr;
@@ -718,15 +915,44 @@
   </style>
 </head>
 <body>
+  <section class="login-page" id="loginPage">
+    <div class="login-card">
+      <h1>初升高规划系统</h1>
+      <p class="tagline">销售登录后填写学生信息，生成家长规划图和销售沟通建议。</p>
+      <form id="loginForm">
+        <label>账号
+          <input name="username" value="sales" autocomplete="username" />
+        </label>
+        <label>密码
+          <input name="password" type="password" value="sales123" autocomplete="current-password" />
+        </label>
+        <button class="btn btn-primary" type="submit">登录</button>
+      </form>
+      <div class="auth-status">
+        <strong id="loginState">未登录</strong>
+        <span id="loginHint">测试账号：sales / sales123；管理员：admin / admin123</span>
+      </div>
+    </div>
+  </section>
+
   <main class="app">
     <aside class="sidebar">
       <div class="brand">
         <div>
           <h1>初升高选科与暑假规划</h1>
-          <p class="tagline">输入中考成绩、目标高中和地区，生成一张可转发给家长的分析图。</p>
+          <p class="tagline" id="sideUserState">登录后开始规划</p>
         </div>
         <div class="logo">LS</div>
       </div>
+
+      <nav class="nav-menu" aria-label="系统导航">
+        <button class="nav-button active" type="button" data-view="query">查询页</button>
+        <button class="nav-button" type="button" data-view="plan">用户规划</button>
+        <button class="nav-button" type="button" data-view="sales">销售建议</button>
+        <button class="nav-button" type="button" data-view="backend" id="backendNav" hidden>后台数据</button>
+      </nav>
+
+      <button class="btn btn-secondary" id="logoutBtn" type="button" style="width:100%; margin-top:22px;">退出登录</button>
 
       <form id="studentForm">
         <section class="form-section">
@@ -804,19 +1030,29 @@
 
       <div class="actions">
         <button class="btn btn-secondary" id="sampleBtn" type="button">换一组示例</button>
-        <button class="btn btn-secondary" id="saveRecordBtn" type="button">保存记录</button>
+        <button class="btn btn-primary" id="saveRecordBtn" type="button">查看规划</button>
         <button class="btn btn-primary" id="downloadBtn" type="button">下载家长图</button>
         <button class="btn btn-secondary" id="downloadSalesBtn" type="button">下载销售图</button>
       </div>
     </aside>
 
     <section class="workspace">
-      <div class="topbar">
-        <p>Demo 版本：规则库为内置示例，正式上线前可补充各省市最新政策和目标高中分数线。</p>
+      <div class="workspace-header">
+        <div class="workspace-title">
+          <h2 id="viewTitle">查询页</h2>
+          <p id="viewSubtitle">填写学生中考成绩、地区和补充信息，点击查看规划。</p>
+        </div>
+        <div class="workspace-actions">
+          <button class="btn btn-secondary" id="downloadFamilyTop" type="button">下载家长图</button>
+          <button class="btn btn-secondary" id="downloadSalesTop" type="button">下载销售图</button>
+          <div class="user-chip">
+            <span id="workspaceUser">未登录</span>
+          </div>
+        </div>
       </div>
 
       <section class="auth-strip">
-        <form class="auth-form" id="loginForm">
+        <form class="auth-form" id="oldLoginForm">
           <label>销售账号
             <input name="username" value="sales" autocomplete="username" />
           </label>
@@ -826,13 +1062,16 @@
           <button class="btn btn-primary" type="submit">登录</button>
         </form>
         <div class="auth-status">
-          <strong id="loginState">未登录</strong>
-          <span id="loginHint">测试账号：sales / sales123；管理员：admin / admin123</span>
-          <button class="btn btn-secondary" id="logoutBtn" type="button" style="display:none;">退出登录</button>
+          <strong id="oldLoginState">未登录</strong>
+          <span id="oldLoginHint">测试账号：sales / sales123；管理员：admin / admin123</span>
         </div>
       </section>
 
-      <div class="report-wrap">
+      <section class="view-panel query-panel active" id="queryView">
+        <div id="queryMount"></div>
+      </section>
+
+      <div class="report-wrap view-panel" id="planView">
         <article class="report" id="reportCard">
           <header class="report-header">
             <div>
@@ -993,7 +1232,7 @@
           </div>
         </article>
       </div>
-      <section class="sales-panel">
+      <section class="sales-panel view-panel" id="salesView">
         <div class="section-title">
           <h2>销售沟通建议话术</h2>
           <span class="pill">内部参考，不进入下载图</span>
@@ -1001,7 +1240,7 @@
         <div class="sales-grid" id="salesTalk"></div>
       </section>
 
-      <section class="backend-panel">
+      <section class="backend-panel view-panel" id="backendView">
         <div class="backend-head">
           <div>
             <h2>后台咨询记录</h2>
@@ -1056,6 +1295,12 @@
     const form = document.querySelector("#studentForm");
     const scoreFields = document.querySelector("#scoreFields");
     const $ = (id) => document.querySelector(id);
+    const viewMeta = {
+      query: ["查询页", "填写学生中考成绩、地区和补充信息，点击查看规划。"],
+      plan: ["用户规划", "给家长看的规划图，可下载为图片转发。"],
+      sales: ["销售建议", "内部沟通话术，帮助销售判断怎么开场、怎么下危机。"],
+      backend: ["后台数据", "管理员查看所有销售保存的咨询记录。"]
+    };
     let authToken = localStorage.getItem("gaokao_planner_token") || "";
     let currentUser = null;
     let allRecords = [];
@@ -1101,16 +1346,48 @@
       if (node) node.textContent = text;
     }
 
+    function initializeLayout() {
+      const mount = $("#queryMount");
+      if (mount && !mount.contains(form)) {
+        mount.appendChild(form);
+        mount.appendChild(document.querySelector(".actions"));
+      }
+      showView("query");
+    }
+
+    function showView(view) {
+      if (view === "backend" && currentUser?.role !== "admin") view = "query";
+      document.querySelectorAll(".view-panel").forEach((panel) => panel.classList.remove("active"));
+      document.querySelectorAll(".nav-button").forEach((button) => button.classList.toggle("active", button.dataset.view === view));
+      const activePanel = $(`#${view}View`);
+      if (activePanel) activePanel.classList.add("active");
+      const [title, subtitle] = viewMeta[view] || viewMeta.query;
+      $("#viewTitle").textContent = title;
+      $("#viewSubtitle").textContent = subtitle;
+      $("#downloadFamilyTop").style.display = view === "plan" ? "block" : "none";
+      $("#downloadSalesTop").style.display = view === "sales" ? "block" : "none";
+      if (view === "backend") loadRecords();
+    }
+
     function updateAuthUI() {
       const loggedIn = Boolean(currentUser);
-      $("#loginForm").style.display = loggedIn ? "none" : "grid";
-      $("#logoutBtn").style.display = loggedIn ? "block" : "none";
+      document.body.classList.toggle("logged-in", loggedIn);
       $("#loginState").textContent = loggedIn
         ? `${currentUser.name}已登录（${currentUser.role === "admin" ? "管理员" : "销售"}）`
         : "未登录";
+      $("#workspaceUser").textContent = loggedIn
+        ? `${currentUser.name} · ${currentUser.role === "admin" ? "管理员" : "销售"}`
+        : "未登录";
+      $("#sideUserState").textContent = loggedIn
+        ? `${currentUser.name}已登录`
+        : "登录后开始规划";
+      $("#backendNav").hidden = currentUser?.role !== "admin";
       $("#loginHint").textContent = loggedIn
-        ? "填写学生信息后，点击左侧“保存记录”即可进入后台列表。"
+        ? "登录成功。请进入查询页填写学生信息。"
         : appConfig.loginHint;
+      if (loggedIn && currentUser.role !== "admin" && $("#backendView").classList.contains("active")) {
+        showView("query");
+      }
     }
 
     async function loadConfig() {
@@ -1135,7 +1412,8 @@
         const payload = await apiFetch("/api/me");
         currentUser = payload.user;
         updateAuthUI();
-        await loadRecords();
+        showView("query");
+        if (currentUser.role === "admin") await loadRecords();
       } catch {
         authToken = "";
         currentUser = null;
@@ -1792,9 +2070,9 @@
 
     async function saveRecord() {
       if (!currentUser) {
-        setBackendMessage("请先登录销售账号，再保存记录。");
+        $("#loginHint").textContent = "请先登录账号，再查看规划。";
         document.querySelector("#loginForm input[name='username']").focus();
-        return;
+        return false;
       }
       try {
         const payload = collectRecord();
@@ -1803,10 +2081,18 @@
           body: JSON.stringify(payload)
         });
         setBackendMessage(`已保存${payload.form.name || "学生"}的规划记录。`);
-        await loadRecords();
+        if (currentUser.role === "admin") await loadRecords();
+        return true;
       } catch (error) {
         setBackendMessage(error.message);
+        return false;
       }
+    }
+
+    async function viewPlanning() {
+      render();
+      await saveRecord();
+      showView("plan");
     }
 
     function recordText(record) {
@@ -1891,10 +2177,16 @@
         renderRecords();
         return;
       }
+      if (currentUser.role !== "admin") {
+        allRecords = [];
+        setBackendMessage("只有管理员可以查看后台数据。");
+        renderRecords();
+        return;
+      }
       try {
         const payload = await apiFetch("/api/records");
         allRecords = payload.records || [];
-        setBackendMessage(`${currentUser.role === "admin" ? "管理员可查看全部记录" : "当前销售只显示自己的记录"}，共 ${allRecords.length} 条。`);
+        setBackendMessage(`管理员可查看全部记录，共 ${allRecords.length} 条。`);
         renderRecords();
       } catch (error) {
         setBackendMessage(error.message);
@@ -1902,8 +2194,8 @@
     }
 
     async function exportRecords() {
-      if (!currentUser) {
-        setBackendMessage("请先登录后再导出记录。");
+      if (!currentUser || currentUser.role !== "admin") {
+        setBackendMessage("只有管理员可以导出后台记录。");
         return;
       }
       try {
@@ -1973,10 +2265,10 @@
         currentUser = payload.user;
         localStorage.setItem("gaokao_planner_token", authToken);
         updateAuthUI();
-        setBackendMessage("登录成功，可以保存学生记录。");
-        await loadRecords();
+        showView("query");
+        if (currentUser.role === "admin") await loadRecords();
       } catch (error) {
-        setBackendMessage(error.message);
+        $("#loginHint").textContent = error.message;
       }
     });
 
@@ -1991,13 +2283,20 @@
       updateAuthUI();
       setBackendMessage("已退出登录。");
       renderRecords();
+      showView("query");
     });
 
-    document.querySelector("#saveRecordBtn").addEventListener("click", saveRecord);
+    document.querySelector("#saveRecordBtn").addEventListener("click", viewPlanning);
     document.querySelector("#refreshRecordsBtn").addEventListener("click", loadRecords);
     document.querySelector("#exportRecordsBtn").addEventListener("click", exportRecords);
     document.querySelector("#recordSearch").addEventListener("input", renderRecords);
     document.querySelector("#recordStatusFilter").addEventListener("change", renderRecords);
+    document.querySelectorAll(".nav-button").forEach((button) => {
+      button.addEventListener("click", () => {
+        render();
+        showView(button.dataset.view);
+      });
+    });
 
     async function downloadElement(selector, filename, backgroundColor = "#f6f2ea") {
       const element = document.querySelector(selector);
@@ -2020,7 +2319,16 @@
       await downloadElement(".sales-panel", `${getData().name || "学生"}-销售沟通建议.png`, "#ffffff");
     });
 
+    document.querySelector("#downloadFamilyTop").addEventListener("click", async () => {
+      await downloadElement("#reportCard", `${getData().name || "学生"}-初升高规划图.png`);
+    });
+
+    document.querySelector("#downloadSalesTop").addEventListener("click", async () => {
+      await downloadElement(".sales-panel", `${getData().name || "学生"}-销售沟通建议.png`, "#ffffff");
+    });
+
     render();
+    initializeLayout();
     loadConfig().then(checkSession);
   </script>
 </body>

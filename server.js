@@ -195,6 +195,16 @@ function visibleRecords(records, user) {
     : records.filter((record) => record.owner && record.owner.username === user.username);
 }
 
+function requireAdmin(req, res) {
+  const user = requireUser(req, res);
+  if (!user) return null;
+  if (user.role !== "admin") {
+    sendJson(res, 403, { error: "只有管理员可以查看后台数据" });
+    return null;
+  }
+  return user;
+}
+
 function csvEscape(value) {
   const text = String(value ?? "");
   return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
@@ -274,7 +284,7 @@ async function handleApi(req, res, url) {
   }
 
   if (req.method === "GET" && url.pathname === "/api/records/export") {
-    const user = requireUser(req, res);
+    const user = requireAdmin(req, res);
     if (!user) return;
     const records = visibleRecords(await readRecords(), user)
       .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
@@ -288,7 +298,7 @@ async function handleApi(req, res, url) {
   }
 
   if (req.method === "GET" && url.pathname === "/api/records") {
-    const user = requireUser(req, res);
+    const user = requireAdmin(req, res);
     if (!user) return;
     const records = visibleRecords(await readRecords(), user)
       .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
@@ -310,7 +320,7 @@ async function handleApi(req, res, url) {
 
   const match = url.pathname.match(/^\/api\/records\/([^/]+)$/);
   if (req.method === "PATCH" && match) {
-    const user = requireUser(req, res);
+    const user = requireAdmin(req, res);
     if (!user) return;
     const body = await readBody(req);
     const records = await readRecords();
