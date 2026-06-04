@@ -1088,10 +1088,7 @@
       </form>
 
       <div class="actions">
-        <button class="btn btn-secondary" id="sampleBtn" type="button">换一组示例</button>
-        <button class="btn btn-primary" id="saveRecordBtn" type="button">查看规划</button>
-        <button class="btn btn-primary" id="downloadBtn" type="button">下载家长图</button>
-        <button class="btn btn-secondary" id="downloadSalesBtn" type="button">下载销售图</button>
+        <button class="btn btn-primary" id="saveRecordBtn" type="button">查询规划</button>
       </div>
     </aside>
 
@@ -1099,7 +1096,7 @@
       <div class="workspace-header">
         <div class="workspace-title">
           <h2 id="viewTitle">查询页</h2>
-          <p id="viewSubtitle">填写学生中考成绩、地区和补充信息，点击查看规划。</p>
+          <p id="viewSubtitle">填写学生中考成绩、地区和补充信息，点击查询规划。</p>
         </div>
         <div class="workspace-actions">
           <button class="btn btn-secondary" id="downloadFamilyTop" type="button">下载家长图</button>
@@ -1371,7 +1368,7 @@
     const scoreFields = document.querySelector("#scoreFields");
     const $ = (id) => document.querySelector(id);
     const viewMeta = {
-      query: ["查询页", "填写学生中考成绩、地区和补充信息，点击查看规划。"],
+      query: ["查询页", "填写学生中考成绩、地区和补充信息，点击查询规划。"],
       lookup: ["用户查询", "输入学生姓名，快速调出当前账号最近一次查询记录。"],
       plan: ["用户规划", "给家长看的规划图，可下载为图片转发。"],
       sales: ["销售建议", "内部沟通参考，帮助销售判断怎么开场、怎么说明紧迫性。"],
@@ -2380,7 +2377,7 @@
 
     async function saveRecord() {
       if (!currentUser) {
-        $("#loginHint").textContent = "请先登录账号，再查看规划。";
+        $("#loginHint").textContent = "请先登录账号，再查询规划。";
         document.querySelector("#loginForm input[name='username']").focus();
         return false;
       }
@@ -2654,18 +2651,6 @@
       render();
     });
 
-    document.querySelector("#sampleBtn").addEventListener("click", () => {
-      const sample = samples[Math.floor(Math.random() * samples.length)];
-      if (sample.province) form.elements.province.value = sample.province;
-      updateCityOptions(sample.city);
-      form.elements.totalManual.value = sample.totalManual || "";
-      renderScoreFields();
-      getFields().forEach((field) => {
-        if (field.name in sample) field.value = sample[field.name];
-      });
-      render();
-    });
-
     document.querySelector("#loginForm").addEventListener("submit", async (event) => {
       event.preventDefault();
       const loginData = Object.fromEntries(new FormData(event.currentTarget).entries());
@@ -2733,14 +2718,6 @@
       link.href = canvas.toDataURL("image/png");
       link.click();
     }
-
-    document.querySelector("#downloadBtn").addEventListener("click", async () => {
-      await downloadElement("#reportCard", `${getData().name || "学生"}-初升高规划图.png`);
-    });
-
-    document.querySelector("#downloadSalesBtn").addEventListener("click", async () => {
-      await downloadElement(".sales-panel", `${getData().name || "学生"}-销售沟通建议.png`, "#ffffff");
-    });
 
     document.querySelector("#downloadFamilyTop").addEventListener("click", async () => {
       await downloadElement("#reportCard", `${getData().name || "学生"}-初升高规划图.png`);
