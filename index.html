@@ -555,29 +555,35 @@
       line-height: 1.75;
     }
 
-    .score-ring {
+    .goal-card {
       align-self: center;
-      display: grid;
-      place-items: center;
-      width: 132px;
-      aspect-ratio: 1;
-      border: 8px solid rgba(249, 168, 37, 0.34);
-      border-top-color: var(--gold);
+      width: 210px;
+      padding: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      border-top: 5px solid var(--gold);
       background: rgba(255, 255, 255, 0.1);
-      text-align: center;
     }
 
-    .score-ring strong {
+    .goal-card span {
       display: block;
-      font-size: 34px;
-      line-height: 1;
-    }
-
-    .score-ring span {
-      display: block;
-      margin-top: 6px;
-      color: #e2e8f0;
+      color: #bfdbfe;
       font-size: 12px;
+      font-weight: 800;
+    }
+
+    .goal-card strong {
+      display: block;
+      margin-top: 8px;
+      color: var(--white);
+      font-size: 26px;
+      line-height: 1.18;
+    }
+
+    .goal-card p {
+      margin-top: 10px;
+      color: #d8e4f7;
+      font-size: 12px;
+      line-height: 1.55;
     }
 
     .report-body {
@@ -597,35 +603,24 @@
       background: rgba(255, 255, 255, 0.72);
     }
 
-    .fit-explain {
-      display: grid;
-      grid-template-columns: 1fr 1.15fr;
-      gap: 14px;
+    .level-explain {
       margin-bottom: 18px;
       padding: 16px;
       border: 1px solid #f2c46d;
       background: #fff8e8;
     }
 
-    .fit-explain strong {
+    .level-explain strong {
       display: block;
       margin-bottom: 8px;
       color: var(--ink);
       font-size: 17px;
     }
 
-    .fit-explain p,
-    .fit-scale li {
+    .level-explain p {
       color: #40506a;
       font-size: 14px;
       line-height: 1.7;
-    }
-
-    .fit-scale {
-      display: grid;
-      gap: 5px;
-      margin: 0;
-      padding-left: 18px;
     }
 
     .metric span {
@@ -899,12 +894,12 @@
       .sales-grid,
       .auth-strip,
       .auth-form,
-      .fit-explain {
+      .level-explain {
         grid-template-columns: 1fr;
       }
 
-      .score-ring {
-        width: 112px;
+      .goal-card {
+        width: 100%;
       }
 
       .report-body,
@@ -1079,11 +1074,10 @@
               <h2 class="report-title" id="reportTitle">陈同学初升高选科与暑假规划</h2>
               <p class="report-subtitle" id="reportSummary">中考之后选科才是关键。暑假只有两个月，是从初中“记忆+模仿”切换到高中“推理+构建”的唯一窗口。</p>
             </div>
-            <div class="score-ring">
-              <div>
-                <strong id="fitScore">82</strong>
-                <span>高中衔接准备度</span>
-              </div>
+            <div class="goal-card">
+              <span>高考目标层次</span>
+              <strong id="heroGaokaoLevel">211 / 双一流</strong>
+              <p id="heroRankTag">按当前相对位次推算，进入高中后需保持校内前列。</p>
             </div>
           </header>
 
@@ -1106,23 +1100,14 @@
                 <strong id="summerFocus">物理 + 化学</strong>
               </div>
               <div class="metric">
-                <span>高考层次预估</span>
-                <strong id="gaokaoLevel">211 / 双一流</strong>
+                <span>当前相对位次</span>
+                <strong id="rankMetric">市排前 8%</strong>
               </div>
             </div>
 
-            <div class="fit-explain">
-              <div>
-                <strong id="fitExplainTitle">88 分：基础较好，但暑假不能松</strong>
-                <p id="fitExplainCopy">这个分数不是目标高中的录取概率，也不和目标高中直接挂钩。它是根据当前总分、各科均衡度和高中学习难度，判断孩子开学后承接高中节奏的准备程度。</p>
-              </div>
-              <ol class="fit-scale">
-                <li>90-100：基础强，重点是高一开局保持排名。</li>
-                <li>80-89：基础较好，暑假要提前完成方法衔接。</li>
-                <li>70-79：有基础但短板明显，需要锁定关键科目。</li>
-                <li>60-69：衔接风险较高，建议先补高中核心方法。</li>
-                <li>60 以下：基础承接压力大，需要先做基础重建。</li>
-              </ol>
+            <div class="level-explain">
+              <strong id="levelExplainTitle">当前更接近 211 / 双一流目标带</strong>
+              <p id="levelExplainCopy">如果高中三年能保持当前相对位次，物理类路径大致对应 211 / 双一流冲刺层。暑假重点是先稳住数学和理科承接能力，避免高一开局排名下滑。</p>
             </div>
 
             <section class="section">
@@ -1893,10 +1878,34 @@
 
       return {
         level,
+        percentText,
         rankText: `${data.city || cityMeta.name}约 ${cityMeta.cohort.toLocaleString("zh-CN")} 名中考生，当前总分约处于市排${percentText}，约第 ${rank.toLocaleString("zh-CN")} 名附近。`,
         estimate: advice,
         method: `${rankEstimate.method} ${rankEstimate.basis} 这个结果用于家长沟通中的层次判断，不等同于正式录取位次。`,
         tag: `参考：市排${percentText}`
+      };
+    }
+
+    function getLevelExplanation(projection, plan) {
+      const levelText = projection.level || "本科";
+      const focus = plan.focus || "数学和英语";
+      const titleMap = {
+        "985 冲刺": "当前可对标 985 冲刺带",
+        "211 / 双一流": "当前更接近 211 / 双一流目标带",
+        "一本重点": "当前更接近一本重点目标带",
+        "一本 / 公办本科": "当前更接近一本或优质公办本科目标带",
+        "本科": "当前应先稳住本科目标线"
+      };
+      const copyMap = {
+        "985 冲刺": `如果高中三年能保持${projection.percentText}的相对位置，大学目标可以先按 985 冲刺层规划。暑假重点不是继续平均加量，而是提前适应高中数学和理科的高强度表达，避免高一开局掉出头部梯队。`,
+        "211 / 双一流": `如果高中三年能保持${projection.percentText}的相对位置，大学目标可以先按 211 / 双一流冲刺层规划。暑假重点是稳住${focus}，把初中题型优势转成高中听课和解题优势。`,
+        "一本重点": `如果高中三年能保持${projection.percentText}的相对位置，大学目标可以先按一本重点院校竞争带规划。暑假最重要的是把${focus}的高中入门方法补上，先避免高一第一次月考排名下滑。`,
+        "一本 / 公办本科": `如果高中三年能保持${projection.percentText}的相对位置，目标应先放在一本线或优质公办本科。暑假不要追求学得多，先把${focus}中最影响开学听课的内容打牢。`,
+        "本科": `当前总分更适合先稳住本科目标，再通过高一排名变化上调预期。暑假先抓${focus}，让孩子开学后能听懂、跟上、完成作业。`
+      };
+      return {
+        title: titleMap[levelText] || titleMap["本科"],
+        copy: copyMap[levelText] || copyMap["本科"]
       };
     }
 
@@ -2111,6 +2120,7 @@
       const selection = getSelection(data, stats);
       const plan = getPlan(data, stats);
       const projection = getGaokaoProjection(data, stats, total, profileConfig.total);
+      const levelExplain = getLevelExplanation(projection, plan);
       const highPlan = getHighSchoolPlan(data, stats, projection);
       const salesTalk = getSalesTalk(data, profile, projection, plan);
       const weakNames = stats.filter((s) => s.ratio !== null && s.ratio < 74).map((s) => s.name).slice(0, 3);
@@ -2120,15 +2130,16 @@
       $("#reportLocation").textContent = `${data.province} ${data.city} · ${rule.location}`;
       $("#reportTitle").textContent = `${data.name || "学生"}初升高选科与暑假规划`;
       $("#reportSummary").textContent = `${profileConfig.note}。中考之后选科才是关键，暑假是从初中“记忆+模仿”切换到高中“推理+构建”的窗口。`;
-      $("#fitScore").textContent = fit;
       const fitExplain = getFitExplanation(fit);
-      $("#fitExplainTitle").textContent = fitExplain.title;
-      $("#fitExplainCopy").textContent = fitExplain.copy;
       $("#totalScore").textContent = `${total} / ${profileConfig.total}`;
       $("#targetSchool").textContent = data.school || "未填写";
       $("#firstChoice").textContent = selection.first;
       $("#summerFocus").textContent = plan.focus;
-      $("#gaokaoLevel").textContent = projection.level;
+      $("#heroGaokaoLevel").textContent = projection.level;
+      $("#heroRankTag").textContent = `当前约${projection.tag.replace("参考：", "")}，高中阶段重点看排名保持。`;
+      $("#rankMetric").textContent = projection.tag.replace("参考：", "");
+      $("#levelExplainTitle").textContent = levelExplain.title;
+      $("#levelExplainCopy").textContent = levelExplain.copy;
 
       const noteInsight = extractNotesInsight(data.notes || "");
       $("#profileType").textContent = profile.type;
