@@ -1,0 +1,1396 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>初升高选科与暑假规划 Demo</title>
+  <script src="vendor/html2canvas.min.js"></script>
+  <style>
+    :root {
+      --ink: #0f172a;
+      --panel: #14213d;
+      --blue: #4f73b9;
+      --sky: #a3b8db;
+      --paper: #f6f2ea;
+      --line: #d8deea;
+      --muted: #64748b;
+      --orange: #fc8033;
+      --gold: #f9a825;
+      --green: #1f8f6f;
+      --white: #ffffff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--ink);
+      background: #e8edf5;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    .app {
+      min-height: 100dvh;
+      display: grid;
+      grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+    }
+
+    .sidebar {
+      background: var(--ink);
+      color: var(--white);
+      padding: 24px;
+      overflow: auto;
+      max-height: 100dvh;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .logo {
+      display: grid;
+      place-items: center;
+      width: 44px;
+      height: 44px;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--gold);
+      font-weight: 800;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: 20px;
+      line-height: 1.25;
+    }
+
+    .tagline {
+      margin-top: 8px;
+      color: #b9c7db;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .form-section {
+      margin-top: 20px;
+      padding-top: 18px;
+      border-top: 1px solid rgba(255, 255, 255, 0.14);
+    }
+
+    .form-section h2 {
+      margin-bottom: 14px;
+      color: #dbeafe;
+      font-size: 15px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    label {
+      display: grid;
+      gap: 7px;
+      margin-bottom: 12px;
+      color: #cbd5e1;
+      font-size: 12px;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 8px;
+      padding: 10px 11px;
+      min-height: 42px;
+      color: var(--white);
+      background: rgba(255, 255, 255, 0.08);
+      outline: none;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--sky);
+      box-shadow: 0 0 0 3px rgba(163, 184, 219, 0.15);
+    }
+
+    textarea {
+      min-height: 92px;
+      resize: vertical;
+      line-height: 1.55;
+    }
+
+    select option {
+      color: var(--ink);
+    }
+
+    .actions {
+      position: sticky;
+      bottom: 0;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin: 22px -24px -24px;
+      padding: 16px 24px 24px;
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0), var(--ink) 24%);
+    }
+
+    .btn {
+      border: 0;
+      border-radius: 8px;
+      min-height: 44px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .btn-primary {
+      color: var(--ink);
+      background: var(--gold);
+    }
+
+    .btn-secondary {
+      color: var(--white);
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+    }
+
+    .workspace {
+      min-width: 0;
+      padding: 28px;
+      overflow: auto;
+      max-height: 100dvh;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      max-width: 980px;
+      margin: 0 auto 16px;
+    }
+
+    .topbar p {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .report-wrap {
+      display: flex;
+      justify-content: center;
+    }
+
+    .report {
+      width: min(920px, 100%);
+      background: var(--paper);
+      border: 1px solid rgba(15, 23, 42, 0.1);
+      box-shadow: 0 24px 60px rgba(15, 23, 42, 0.16);
+    }
+
+    .report-header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 22px;
+      padding: 30px;
+      color: var(--white);
+      background:
+        linear-gradient(135deg, rgba(79, 115, 185, 0.92), rgba(15, 23, 42, 0.98)),
+        var(--ink);
+    }
+
+    .eyebrow {
+      margin-bottom: 8px;
+      color: #bfdbfe;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    .report-title {
+      font-size: clamp(26px, 4vw, 40px);
+      line-height: 1.16;
+      font-weight: 900;
+    }
+
+    .report-subtitle {
+      margin-top: 12px;
+      max-width: 640px;
+      color: #d8e4f7;
+      font-size: 15px;
+      line-height: 1.75;
+    }
+
+    .score-ring {
+      align-self: center;
+      display: grid;
+      place-items: center;
+      width: 132px;
+      aspect-ratio: 1;
+      border: 8px solid rgba(249, 168, 37, 0.34);
+      border-top-color: var(--gold);
+      background: rgba(255, 255, 255, 0.1);
+      text-align: center;
+    }
+
+    .score-ring strong {
+      display: block;
+      font-size: 34px;
+      line-height: 1;
+    }
+
+    .score-ring span {
+      display: block;
+      margin-top: 6px;
+      color: #e2e8f0;
+      font-size: 12px;
+    }
+
+    .report-body {
+      padding: 24px 30px 30px;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .metric {
+      padding: 15px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.72);
+    }
+
+    .fit-explain {
+      display: grid;
+      grid-template-columns: 1fr 1.15fr;
+      gap: 14px;
+      margin-bottom: 18px;
+      padding: 16px;
+      border: 1px solid #f2c46d;
+      background: #fff8e8;
+    }
+
+    .fit-explain strong {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--ink);
+      font-size: 17px;
+    }
+
+    .fit-explain p,
+    .fit-scale li {
+      color: #40506a;
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .fit-scale {
+      display: grid;
+      gap: 5px;
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .metric strong {
+      display: block;
+      margin-top: 7px;
+      font-size: 18px;
+      line-height: 1.25;
+    }
+
+    .section {
+      margin-top: 18px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .section-title h2 {
+      font-size: 19px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 4px 10px;
+      color: var(--blue);
+      background: #e8eef9;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .columns {
+      display: grid;
+      grid-template-columns: 1.08fr 0.92fr;
+      gap: 16px;
+    }
+
+    .insight {
+      padding: 16px;
+      border-left: 5px solid var(--orange);
+      background: #fffaf3;
+      line-height: 1.75;
+    }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .mini-card {
+      min-height: 116px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.76);
+    }
+
+    .mini-card strong {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--ink);
+      font-size: 15px;
+    }
+
+    .mini-card p,
+    .plan-item p,
+    .profile-copy {
+      color: #40506a;
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    .bars {
+      display: grid;
+      gap: 9px;
+    }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: 56px 1fr 42px;
+      align-items: center;
+      gap: 10px;
+      color: #334155;
+      font-size: 13px;
+    }
+
+    .bar-track {
+      height: 9px;
+      overflow: hidden;
+      background: #dbe3ee;
+    }
+
+    .bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--blue), var(--green));
+    }
+
+    .subject-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .subject-row {
+      display: grid;
+      grid-template-columns: 64px 1fr auto;
+      gap: 10px;
+      align-items: center;
+      color: #334155;
+      font-size: 13px;
+    }
+
+    .level {
+      padding: 2px 8px;
+      color: var(--white);
+      background: var(--blue);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .level.warn {
+      background: var(--orange);
+    }
+
+    .level.good {
+      background: var(--green);
+    }
+
+    .plan {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+
+    .plan-item {
+      padding: 14px;
+      background: var(--white);
+      border: 1px solid var(--line);
+    }
+
+    .plan-item strong {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--blue);
+      font-size: 14px;
+    }
+
+    .footer-note {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 16px;
+      align-items: center;
+      margin-top: 20px;
+      padding: 16px;
+      color: var(--white);
+      background: var(--ink);
+    }
+
+    .footer-note strong {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--gold);
+    }
+
+    .footer-note p {
+      color: #d7dfec;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .sales-panel {
+      width: min(920px, 100%);
+      margin: 18px auto 0;
+      padding: 20px;
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+      box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
+    }
+
+    .sales-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .sales-card {
+      padding: 14px;
+      border: 1px solid var(--line);
+      background: #f8fafc;
+    }
+
+    .sales-card strong {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--ink);
+      font-size: 15px;
+    }
+
+    .sales-card p {
+      color: #40506a;
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .qr-placeholder {
+      display: grid;
+      place-items: center;
+      width: 74px;
+      height: 74px;
+      background: var(--white);
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    @media (max-width: 980px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar,
+      .workspace {
+        max-height: none;
+      }
+
+      .actions {
+        position: static;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .workspace {
+        padding: 14px;
+      }
+
+      .topbar,
+      .report-header,
+      .columns,
+      .footer-note {
+        grid-template-columns: 1fr;
+      }
+
+      .metric-grid,
+      .card-grid,
+      .plan,
+      .sales-grid,
+      .fit-explain {
+        grid-template-columns: 1fr;
+      }
+
+      .score-ring {
+        width: 112px;
+      }
+
+      .report-body,
+      .report-header {
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div>
+          <h1>初升高选科与暑假规划</h1>
+          <p class="tagline">输入中考成绩、目标高中和地区，生成一张可转发给家长的分析图。</p>
+        </div>
+        <div class="logo">LS</div>
+      </div>
+
+      <form id="studentForm">
+        <section class="form-section">
+          <h2>学生信息</h2>
+          <div class="grid-2">
+            <label>学生姓名
+              <input name="name" value="陈同学" />
+            </label>
+            <label>目标高中
+              <input name="school" placeholder="可不填" />
+            </label>
+          </div>
+          <div class="grid-2">
+            <label>省份
+              <select name="province">
+                <option>北京</option>
+                <option>天津</option>
+                <option>河北</option>
+                <option>山西</option>
+                <option>内蒙古</option>
+                <option>辽宁</option>
+                <option>吉林</option>
+                <option>黑龙江</option>
+                <option>上海</option>
+                <option>江苏</option>
+                <option>浙江</option>
+                <option>安徽</option>
+                <option>福建</option>
+                <option>江西</option>
+                <option>山东</option>
+                <option>河南</option>
+                <option>湖北</option>
+                <option>湖南</option>
+                <option selected>广东</option>
+                <option>广西</option>
+                <option>海南</option>
+                <option>重庆</option>
+                <option>四川</option>
+                <option>贵州</option>
+                <option>云南</option>
+                <option>陕西</option>
+                <option>甘肃</option>
+                <option>青海</option>
+                <option>宁夏</option>
+              </select>
+            </label>
+            <label>城市
+              <select name="city"></select>
+            </label>
+          </div>
+          <div>
+            <label>期待就业方向
+              <select name="direction">
+                <option value="unknown" selected>暂不确定</option>
+                <option value="science">理工/计算机</option>
+                <option value="medicine">医学/药学</option>
+                <option value="finance">财经/管理</option>
+                <option value="humanities">人文/法学</option>
+              </select>
+            </label>
+          </div>
+          <label>补充信息
+            <textarea name="notes" placeholder="选填：家长顾虑、孩子学习状态、目标专业、是否抗拒线上课、薄弱科目、性格特点等。"></textarea>
+          </label>
+        </section>
+
+        <section class="form-section">
+          <h2>中考成绩</h2>
+          <label>中考总分
+            <input type="number" name="totalManual" value="573" min="0" />
+          </label>
+          <div class="grid-2" id="scoreFields"></div>
+        </section>
+      </form>
+
+      <div class="actions">
+        <button class="btn btn-secondary" id="sampleBtn" type="button">换一组示例</button>
+        <button class="btn btn-primary" id="downloadBtn" type="button">下载规划图</button>
+      </div>
+    </aside>
+
+    <section class="workspace">
+      <div class="topbar">
+        <p>Demo 版本：规则库为内置示例，正式上线前可补充各省市最新政策和目标高中分数线。</p>
+      </div>
+
+      <div class="report-wrap">
+        <article class="report" id="reportCard">
+          <header class="report-header">
+            <div>
+              <p class="eyebrow" id="reportLocation">广东 深圳 · 3+1+2 新高考地区</p>
+              <h2 class="report-title" id="reportTitle">陈同学初升高选科与暑假规划</h2>
+              <p class="report-subtitle" id="reportSummary">中考之后选科才是关键。暑假只有两个月，是从初中“记忆+模仿”切换到高中“推理+构建”的唯一窗口。</p>
+            </div>
+            <div class="score-ring">
+              <div>
+                <strong id="fitScore">82</strong>
+                <span>目标距离分</span>
+              </div>
+            </div>
+          </header>
+
+          <div class="report-body">
+            <div class="metric-grid">
+              <div class="metric">
+                <span>中考估算总分</span>
+                <strong id="totalScore">593 / 630</strong>
+              </div>
+              <div class="metric">
+                <span>目标高中</span>
+                <strong id="targetSchool">深圳八大高中</strong>
+              </div>
+              <div class="metric">
+                <span>推荐首选科</span>
+                <strong id="firstChoice">物理</strong>
+              </div>
+              <div class="metric">
+                <span>暑假重点</span>
+                <strong id="summerFocus">物理 + 化学</strong>
+              </div>
+              <div class="metric">
+                <span>高考层次预估</span>
+                <strong id="gaokaoLevel">211 / 双一流</strong>
+              </div>
+            </div>
+
+            <div class="fit-explain">
+              <div>
+                <strong id="fitExplainTitle">88 分：比较匹配，但暑假不能松</strong>
+                <p id="fitExplainCopy">这个分数不是录取概率，而是用当前中考总分和目标高中层级，判断孩子离目标高中还有多远。分数越高，说明当前基础越接近目标要求。</p>
+              </div>
+              <ol class="fit-scale">
+                <li>90-100：目标很稳，重点看高一排名保持。</li>
+                <li>80-89：比较匹配，暑假要提前衔接。</li>
+                <li>70-79：可以冲刺，需要明确补分科目。</li>
+                <li>60-69：风险较高，建议设置稳妥高中。</li>
+                <li>60 以下：目标偏高，需要重新做梯度。</li>
+              </ol>
+            </div>
+
+            <section class="section">
+              <div class="section-title">
+                <h2>升学定位建议</h2>
+                <span class="pill" id="profileType">理性规划型</span>
+              </div>
+              <div class="columns">
+                <div class="insight">
+                  <p id="profileCopy">孩子整体属于目标感较强、愿意按计划推进的类型。家长沟通时不用过度施压，更适合给出清晰阶段目标：先守住物化基础，再用数学建立高中学习信心。</p>
+                </div>
+                <div class="bars" id="profileBars"></div>
+              </div>
+            </section>
+
+            <section class="section">
+              <div class="section-title">
+                <h2>当地高考考情分析</h2>
+                <span class="pill" id="examMode">广东 3+1+2</span>
+              </div>
+              <div class="card-grid">
+                <div class="mini-card">
+                  <strong>升学规则</strong>
+                  <p id="examRule">广东采用 3+1+2 模式，物理/历史二选一，再从化学、生物、政治、地理中选两科。</p>
+                </div>
+                <div class="mini-card">
+                  <strong>选科风险</strong>
+                  <p id="examRisk">物理+化学组合专业覆盖面更宽，但高一难度跳升明显，需要暑假提前衔接。</p>
+                </div>
+                <div class="mini-card">
+                  <strong>家长话术</strong>
+                  <p id="parentTalk">选科不是高考前的事，是高一开学前就要规划的事。现在先看孩子能不能承接物化难度。</p>
+                </div>
+              </div>
+            </section>
+
+            <section class="section">
+              <div class="section-title">
+                <h2>学科诊断</h2>
+                <span class="pill" id="subjectLabel">优势清晰，理化需衔接</span>
+              </div>
+              <div class="columns">
+                <div class="subject-list" id="subjectList"></div>
+                <div class="insight">
+                  <p id="subjectInsight">数学和英语能支撑高一开局，但物理、化学已经进入高中选科关键区。建议不要等开学后再补，暑假先把运动学、受力分析、物质分类、离子反应这几块打通。</p>
+                </div>
+              </div>
+            </section>
+
+            <section class="section">
+              <div class="section-title">
+                <h2>中考位次到高考层次预估</h2>
+                <span class="pill" id="rankTag">参考：市排前 8%</span>
+              </div>
+              <div class="card-grid">
+                <div class="mini-card">
+                  <strong>当前相对位次</strong>
+                  <p id="rankEstimate">按深圳约 10 万中考生粗略估算，当前成绩约处于市排前 8%，属于重点高中竞争带。</p>
+                </div>
+                <div class="mini-card">
+                  <strong>高考院校层次</strong>
+                  <p id="gaokaoEstimate">如果高中三年保持同等相对位次，物理类路径大致对应 211 / 双一流冲刺层。</p>
+                </div>
+                <div class="mini-card">
+                  <strong>校准方式</strong>
+                  <p id="rankMethod">正式版建议接入近年一分一段表：地区、年份、选科、分数/位次四项共同校准。</p>
+                </div>
+              </div>
+            </section>
+
+            <section class="section">
+              <div class="section-title">
+                <h2>推荐选科组合</h2>
+                <span class="pill" id="comboTag">主推：物理 + 化学 + 地理</span>
+              </div>
+              <div class="card-grid">
+                <div class="mini-card">
+                  <strong id="comboA">物理 + 化学 + 地理</strong>
+                  <p id="comboAReason">适合目标偏理工、计算机、财经交叉方向的学生，专业选择空间更大。</p>
+                </div>
+                <div class="mini-card">
+                  <strong id="comboB">物理 + 化学 + 生物</strong>
+                  <p id="comboBReason">如果后续考虑医学、药学、生物相关专业，可以作为强化版方案。</p>
+                </div>
+                <div class="mini-card">
+                  <strong id="comboC">历史 + 政治 + 地理</strong>
+                  <p id="comboCReason">仅在物理持续吃力、且明确走人文法学方向时考虑，不建议过早放弃物化。</p>
+                </div>
+              </div>
+            </section>
+
+            <section class="section">
+              <div class="section-title">
+                <h2>暑假精简学习计划</h2>
+                <span class="pill">4 周抓关键</span>
+              </div>
+              <div class="plan" id="summerPlan"></div>
+            </section>
+
+            <section class="section">
+              <div class="section-title">
+                <h2>高中学习规划</h2>
+                <span class="pill" id="highPlanTag">高一先定选科，高二拉开排名</span>
+              </div>
+              <div class="plan" id="highSchoolPlan"></div>
+            </section>
+          </div>
+        </article>
+      </div>
+      <section class="sales-panel">
+        <div class="section-title">
+          <h2>销售沟通建议话术</h2>
+          <span class="pill">内部参考，不进入下载图</span>
+        </div>
+        <div class="sales-grid" id="salesTalk"></div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const form = document.querySelector("#studentForm");
+    const scoreFields = document.querySelector("#scoreFields");
+    const $ = (id) => document.querySelector(id);
+
+    const cityOptions = {
+      北京: cityList("北京", 115000, ["东城", "西城", "朝阳", "海淀", "丰台", "石景山", "通州", "顺义", "昌平", "大兴", "房山"]),
+      天津: cityList("天津", 105000, ["和平", "河西", "南开", "河北", "红桥", "滨海新区", "武清", "宝坻"]),
+      河北: cityList("石家庄", 120000, ["唐山", "秦皇岛", "邯郸", "邢台", "保定", "张家口", "承德", "沧州", "廊坊", "衡水"]),
+      山西: cityList("太原", 65000, ["大同", "阳泉", "长治", "晋城", "朔州", "晋中", "运城", "忻州", "临汾", "吕梁"]),
+      内蒙古: cityList("呼和浩特", 45000, ["包头", "乌海", "赤峰", "通辽", "鄂尔多斯", "呼伦贝尔", "巴彦淖尔", "乌兰察布"]),
+      辽宁: cityList("沈阳", 76000, ["大连", "鞍山", "抚顺", "本溪", "丹东", "锦州", "营口", "阜新", "辽阳", "盘锦", "铁岭", "朝阳", "葫芦岛"]),
+      吉林: cityList("长春", 70000, ["吉林", "四平", "辽源", "通化", "白山", "松原", "白城", "延边"]),
+      黑龙江: cityList("哈尔滨", 78000, ["齐齐哈尔", "牡丹江", "佳木斯", "大庆", "鸡西", "双鸭山", "伊春", "七台河", "鹤岗", "黑河", "绥化"]),
+      上海: cityList("上海", 95000, ["黄浦", "徐汇", "长宁", "静安", "普陀", "虹口", "杨浦", "闵行", "浦东新区", "宝山", "嘉定", "松江", "青浦"]),
+      江苏: cityList("南京", 65000, ["苏州", "无锡", "常州", "南通", "扬州", "镇江", "泰州", "徐州", "连云港", "淮安", "盐城", "宿迁"]),
+      浙江: cityList("杭州", 78000, ["宁波", "温州", "嘉兴", "湖州", "绍兴", "金华", "衢州", "舟山", "台州", "丽水"]),
+      安徽: cityList("合肥", 92000, ["芜湖", "蚌埠", "淮南", "马鞍山", "淮北", "铜陵", "安庆", "黄山", "滁州", "阜阳", "宿州", "六安", "亳州", "池州", "宣城"]),
+      福建: cityList("福州", 74000, ["厦门", "泉州", "漳州", "莆田", "三明", "南平", "龙岩", "宁德"]),
+      江西: cityList("南昌", 72000, ["九江", "景德镇", "萍乡", "新余", "鹰潭", "赣州", "吉安", "宜春", "抚州", "上饶"]),
+      山东: cityList("济南", 85000, ["青岛", "淄博", "枣庄", "东营", "烟台", "潍坊", "济宁", "泰安", "威海", "日照", "临沂", "德州", "聊城", "滨州", "菏泽"]),
+      河南: cityList("郑州", 130000, ["开封", "洛阳", "平顶山", "安阳", "鹤壁", "新乡", "焦作", "濮阳", "许昌", "漯河", "三门峡", "南阳", "商丘", "信阳", "周口", "驻马店"]),
+      湖北: cityList("武汉", 85000, ["黄石", "十堰", "宜昌", "襄阳", "鄂州", "荆门", "孝感", "荆州", "黄冈", "咸宁", "随州", "恩施"]),
+      湖南: cityList("长沙", 78000, ["株洲", "湘潭", "衡阳", "邵阳", "岳阳", "常德", "张家界", "益阳", "郴州", "永州", "怀化", "娄底", "湘西"]),
+      广东: cityList("深圳", 100000, ["广州", "珠海", "汕头", "佛山", "韶关", "河源", "梅州", "惠州", "汕尾", "东莞", "中山", "江门", "阳江", "湛江", "茂名", "肇庆", "清远", "潮州", "揭阳", "云浮"]),
+      广西: cityList("南宁", 78000, ["柳州", "桂林", "梧州", "北海", "防城港", "钦州", "贵港", "玉林", "百色", "贺州", "河池", "来宾", "崇左"]),
+      海南: cityList("海口", 35000, ["三亚", "三沙", "儋州", "文昌", "琼海", "万宁", "东方"]),
+      重庆: cityList("重庆", 125000, ["万州", "涪陵", "渝中", "江北", "沙坪坝", "九龙坡", "南岸", "北碚", "渝北", "巴南", "江津", "合川", "永川"]),
+      四川: cityList("成都", 140000, ["自贡", "攀枝花", "泸州", "德阳", "绵阳", "广元", "遂宁", "内江", "乐山", "南充", "眉山", "宜宾", "广安", "达州", "雅安", "巴中", "资阳", "阿坝", "甘孜", "凉山"]),
+      贵州: cityList("贵阳", 62000, ["六盘水", "遵义", "安顺", "毕节", "铜仁", "黔西南", "黔东南", "黔南"]),
+      云南: cityList("昆明", 90000, ["曲靖", "玉溪", "保山", "昭通", "丽江", "普洱", "临沧", "楚雄", "红河", "文山", "西双版纳", "大理", "德宏", "怒江", "迪庆"]),
+      陕西: cityList("西安", 93000, ["铜川", "宝鸡", "咸阳", "渭南", "延安", "汉中", "榆林", "安康", "商洛"]),
+      甘肃: cityList("兰州", 52000, ["嘉峪关", "金昌", "白银", "天水", "武威", "张掖", "平凉", "酒泉", "庆阳", "定西", "陇南", "临夏", "甘南"]),
+      青海: cityList("西宁", 28000, ["海东", "海北", "黄南", "海南", "果洛", "玉树", "海西"]),
+      宁夏: cityList("银川", 33000, ["石嘴山", "吴忠", "固原", "中卫"])
+    };
+
+    const subjectTemplates = {
+      sz630: { total: 630, note: "深圳中考参考口径", subjects: [["chinese", "语文", 120, 103], ["math", "数学", 100, 92], ["english", "英语", 100, 96], ["science", "理化合卷", 140, 130], ["history", "历史", 70, 61], ["politics", "道法", 50, 43], ["pe", "体育", 50, 48]] },
+      gz810: { total: 810, note: "广州中考参考口径", subjects: [["chinese", "语文", 120, 104], ["math", "数学", 120, 106], ["english", "英语", 120, 108], ["physics", "物理", 100, 84], ["chemistry", "化学", 100, 82], ["history", "历史", 90, 72], ["politics", "道法", 90, 76], ["pe", "体育", 70, 66]] },
+      sh750: { total: 750, note: "上海中考参考口径", subjects: [["chinese", "语文", 150, 124], ["math", "数学", 150, 128], ["english", "英语", 150, 132], ["science", "综合测试", 150, 122], ["politics", "道法", 60, 50], ["history", "历史", 60, 51], ["pe", "体育", 30, 28]] },
+      cd710: { total: 710, note: "成都中考参考口径", subjects: [["chinese", "语文", 150, 122], ["math", "数学", 150, 126], ["english", "英语", 150, 129], ["physics", "物理", 70, 58], ["chemistry", "化学", 50, 42], ["history", "历史", 20, 17], ["politics", "道法", 20, 17], ["pe", "体育", 60, 56], ["lab", "实验/综合", 40, 35]] },
+      hz600: { total: 600, note: "杭州中考参考口径", subjects: [["chinese", "语文", 120, 102], ["math", "数学", 120, 101], ["english", "英语", 120, 105], ["science", "科学", 160, 132], ["society", "社会", 50, 42], ["pe", "体育", 30, 28]] },
+      bj660: { total: 660, note: "北京中考参考口径", subjects: [["chinese", "语文", 100, 84], ["math", "数学", 100, 86], ["english", "英语", 100, 88], ["physics", "物理", 80, 68], ["politics", "道法", 80, 68], ["history", "历史", 80, 66], ["geography", "地理/生物", 80, 66], ["pe", "体育", 40, 37]] },
+      generic750: { total: 750, note: "省级通用参考口径", subjects: [["chinese", "语文", 120, 100], ["math", "数学", 120, 102], ["english", "英语", 120, 104], ["physics", "物理", 80, 66], ["chemistry", "化学", 70, 58], ["history", "历史", 60, 49], ["politics", "道法", 60, 50], ["pe", "体育", 60, 56], ["bioGeo", "生地/综合", 60, 52]] }
+    };
+
+    const cityTemplateMap = {
+      "广东-深圳": "sz630",
+      "广东-广州": "gz810",
+      "上海-上海": "sh750",
+      "四川-成都": "cd710",
+      "浙江-杭州": "hz600",
+      "北京-北京": "bj660"
+    };
+
+    const provinceModes = {
+      "3+3": ["北京", "天津", "上海", "浙江", "山东", "海南"],
+      "3+1+2": ["河北", "辽宁", "江苏", "福建", "湖北", "湖南", "广东", "重庆", "甘肃", "吉林", "黑龙江", "安徽", "江西", "贵州", "广西", "山西", "内蒙古", "河南", "四川", "云南", "陕西", "青海", "宁夏"]
+    };
+
+    const samples = [
+      { name: "陈同学", province: "广东", city: "深圳", direction: "unknown", totalManual: 573 },
+      { name: "王同学", province: "四川", city: "成都", direction: "medicine", totalManual: 612 },
+      { name: "周同学", province: "浙江", city: "杭州", direction: "humanities", totalManual: 528 }
+    ];
+
+    function cityList(first, cohort, rest) {
+      return [{ name: first, cohort }, ...rest.map((name, index) => ({ name, cohort: Math.max(18000, Math.round(cohort * (0.86 - index * 0.035))) }))];
+    }
+
+    function getFields() {
+      return [...form.elements].filter((el) => el.name);
+    }
+
+    function getData() {
+      return Object.fromEntries(getFields().map((field) => [field.name, field.type === "number" ? Number(field.value || 0) : field.value]));
+    }
+
+    function getCityMeta(data) {
+      const cities = cityOptions[data.province] || cityOptions["广东"];
+      return cities.find((city) => city.name === data.city) || cities[0];
+    }
+
+    function getScoreProfile(data) {
+      return subjectTemplates[cityTemplateMap[`${data.province}-${data.city}`]] || subjectTemplates.generic750;
+    }
+
+    function updateCityOptions(selectedCity) {
+      const province = form.elements.province.value;
+      const citySelect = form.elements.city;
+      const cities = cityOptions[province] || cityOptions["广东"];
+      citySelect.innerHTML = cities.map((city) => `<option value="${city.name}">${city.name}</option>`).join("");
+      citySelect.value = selectedCity && cities.some((city) => city.name === selectedCity) ? selectedCity : cities[0].name;
+    }
+
+    function renderScoreFields(keepValues = {}) {
+      const data = getData();
+      const profile = getScoreProfile(data);
+      form.elements.totalManual.max = profile.total;
+      if (!form.elements.totalManual.value) form.elements.totalManual.value = profile.subjects.reduce((sum, item) => sum + item[3], 0);
+      scoreFields.innerHTML = profile.subjects.map(([key, label, max, sample]) => {
+        const value = keepValues[key] ?? sample;
+        return `<label>${label}<input type="number" name="${key}" value="${value}" min="0" max="${max}" data-score-field="1" data-label="${label}" data-max="${max}" /></label>`;
+      }).join("");
+      scoreFields.querySelectorAll("input").forEach((input) => input.addEventListener("input", render));
+    }
+
+    function getSubjectStats(data) {
+      const profile = getScoreProfile(data);
+      return profile.subjects.map(([key, name, max]) => {
+        const raw = data[key];
+        const hasScore = Number.isFinite(raw) && raw > 0;
+        const score = hasScore ? Math.min(raw, max) : 0;
+        return { key, name, score, max, ratio: hasScore ? Math.round((score / max) * 100) : null, hasScore };
+      });
+    }
+
+    function safeRatio(stats, keys) {
+      const picked = stats.filter((s) => keys.includes(s.key) && s.ratio !== null);
+      if (!picked.length) return null;
+      return Math.round(picked.reduce((sum, item) => sum + item.ratio, 0) / picked.length);
+    }
+
+    function levelFor(ratio) {
+      if (ratio === null) return { text: "未填", cls: "warn" };
+      if (ratio >= 88) return { text: "优势", cls: "good" };
+      if (ratio >= 74) return { text: "稳定", cls: "" };
+      return { text: "需补", cls: "warn" };
+    }
+
+    function getProvinceRule(data) {
+      const is33 = provinceModes["3+3"].includes(data.province);
+      const is312 = provinceModes["3+1+2"].includes(data.province);
+      if (is33) {
+        return {
+          mode: `${data.province} 3+3`,
+          location: "3+3 新高考地区",
+          rule: `${data.province}属于 3+3 新高考口径，选科组合更灵活，但高校专业限选要求必须提前核对。`,
+          risk: "3+3 最大风险不是选不出科，而是只按短期分数选，后面发现目标专业受限。",
+          talk: "先保留专业选择权，再看孩子高一真实承接能力，不要暑假就把未来方向锁死。"
+        };
+      }
+      if (is312) {
+        return {
+          mode: `${data.province} 3+1+2`,
+          location: "3+1+2 新高考地区",
+          rule: `${data.province}采用或进入 3+1+2 新高考节奏，首选物理/历史会直接影响后续专业池。`,
+          risk: "物理+化学组合专业覆盖面更宽，但高一难度跳升明显，需要暑假提前衔接。",
+          talk: "选科不是高考前的事，是高一开学前就要规划的事。现在先看孩子能不能承接物化难度。"
+        };
+      }
+      return {
+        mode: `${data.province} 高考政策`,
+        location: "需校准当地最新政策",
+        rule: "当地高考政策需按当年教育考试院口径确认，当前 demo 先给出通用规划建议。",
+        risk: "政策口径不清时，最稳妥的策略是先保留数学、英语和理科基础，不急于收窄路径。",
+        talk: "我们先用孩子现在的成绩结构做规划，政策细节再用当地考试院信息校准。"
+      };
+    }
+
+    function getProfile(data, stats, total, totalMax) {
+      const filled = stats.filter((s) => s.ratio !== null);
+      const average = filled.length ? Math.round(filled.reduce((sum, item) => sum + item.ratio, 0) / filled.length) : Math.round((total / totalMax) * 100);
+      const scienceAvg = safeRatio(stats, ["math", "physics", "chemistry", "science"]) ?? average;
+      const humanitiesAvg = safeRatio(stats, ["chinese", "english", "history", "politics", "society"]) ?? average;
+      const spread = filled.length > 1 ? Math.max(...filled.map((s) => s.ratio)) - Math.min(...filled.map((s) => s.ratio)) : 0;
+      const stability = Math.round(Math.min(94, Math.max(56, 98 - spread)));
+      const directionClarity = data.direction === "unknown" ? 58 : 82;
+
+      let type = "均衡观察型";
+      if (average >= 86) type = "高位冲刺型";
+      if (average < 72) type = "基础重建型";
+      if (humanitiesAvg > scienceAvg + 10) type = "表达优势型";
+      if (scienceAvg > humanitiesAvg + 8) type = "理科潜力型";
+
+      const copyMap = {
+        高位冲刺型: "当前分数已经具备较好的高中入口基础，后续关键不是继续平均用力，而是尽快确定优势科目和目标层次，避免高一开学后排名波动。",
+        均衡观察型: "当前基础较均衡，适合用高一前两次大考观察真实承接能力。暑假重点不是盲目提前学，而是建立高中题型框架和复盘习惯。",
+        基础重建型: "当前更需要先补齐高中入门门槛。建议先抓总分最有弹性的科目，少做大而全计划，先让孩子在开学月考前看到确定性进步。",
+        表达优势型: "孩子在人文理解和表达类学科上更容易建立信心，但选科不能只追求轻松，需要评估理科基础是否还能保留专业选择权。",
+        理科潜力型: "孩子理科承接潜力较明显，建议暑假优先打通数学方法、物理过程分析和化学概念体系，高一尽量保留物化路径。"
+      };
+
+      return {
+        type,
+        copy: copyMap[type],
+        bars: [
+          ["总分位置", Math.min(100, average)],
+          ["稳定性", stability],
+          ["理科承接", Math.min(100, scienceAvg)],
+          ["方向清晰", directionClarity]
+        ]
+      };
+    }
+
+    function getSelection(data, stats) {
+      const scienceReady = safeRatio(stats, ["math", "physics", "chemistry", "science"]) ?? 76;
+      const humanities = safeRatio(stats, ["chinese", "english", "history", "politics", "society"]) ?? 76;
+      const is33 = provinceModes["3+3"].includes(data.province);
+
+      if (data.direction === "humanities" && humanities > scienceReady + 8) {
+        return {
+          first: is33 ? "综合" : "历史",
+          tag: is33 ? "主推：政史地/史政生方向" : "主推：历史 + 政治 + 地理",
+          a: ["历史 + 政治 + 地理", "适合人文、法学、传媒方向，优势在表达和理解，但专业覆盖面相对收窄。"],
+          b: ["历史 + 政治 + 生物", "如果孩子政治稳定、生物记忆能力较强，可以作为保分型组合。"],
+          c: ["物理 + 化学 + 地理", "若未来方向仍不确定，建议暑假先测试物化承接能力，再决定是否保留物理类通道。"]
+        };
+      }
+
+      if (data.direction === "medicine") {
+        return {
+          first: is33 ? "综合" : "物理",
+          tag: "主推：物理 + 化学 + 生物",
+          a: ["物理 + 化学 + 生物", "适合医学、药学、生物相关方向，要求物化基础过关，暑假必须提前衔接。"],
+          b: ["物理 + 化学 + 地理", "如果生物兴趣一般，地理可降低部分记忆压力，同时保留较宽专业选择。"],
+          c: ["历史 + 政治 + 地理", "除非明确不走医学理工，否则不建议过早放弃物理和化学。"]
+        };
+      }
+
+      return {
+        first: is33 ? "综合" : "物理",
+        tag: "主推：物理 + 化学 + 地理",
+        a: ["物理 + 化学 + 地理", "适合目标偏理工、计算机、财经交叉方向的学生，专业选择空间更大。"],
+        b: ["物理 + 化学 + 生物", "如果后续考虑医学、药学、生物相关专业，可以作为强化版方案。"],
+        c: ["历史 + 政治 + 地理", "仅在物理持续吃力、且明确走人文法学方向时考虑，不建议过早放弃物化。"]
+      };
+    }
+
+    function getPlan(data, stats) {
+      const keys = data.direction === "humanities" ? ["math", "english", "chinese"] : ["math", "physics", "chemistry", "science"];
+      const candidates = stats.filter((s) => keys.includes(s.key)).sort((a, b) => (a.ratio ?? 100) - (b.ratio ?? 100)).slice(0, 2);
+      const focus = candidates.length ? candidates.map((s) => s.name).join(" + ") : "数学 + 英语";
+      return {
+        focus,
+        items: [
+          ["第 1 周 诊断", `完成${focus}入门测试，整理错题类型；只有总分时，先做三科诊断卷补齐画像。`],
+          ["第 2 周 衔接", "数学补函数与不等式；理科抓运动、受力、物质分类；文科抓阅读表达和材料分析。"],
+          ["第 3 周 方法", "从初中记忆模仿切换到高中推理构建，每科固定 2 类题型反复打通。"],
+          ["第 4 周 模拟", "做一次高一开学模拟卷，复盘薄弱点，确定开学后选科观察重点。"]
+        ]
+      };
+    }
+
+    function getGaokaoProjection(data, stats, total, totalMax) {
+      const ratio = Math.min(0.99, Math.max(0, total / totalMax));
+      const cityMeta = getCityMeta(data);
+      const targetText = data.school || "目标高中";
+      const difficultyBoost = /四大|重点|名校|实验|外国语|一中|附中/.test(targetText) ? 0.012 : 0;
+      const estimatedPercentile = Math.max(0.006, Math.min(0.68, Math.pow(1 - ratio, 1.65) + difficultyBoost));
+      const rank = Math.max(1, Math.round(cityMeta.cohort * estimatedPercentile));
+      const percentText = estimatedPercentile < 0.01 ? "前 1%" : `前 ${Math.round(estimatedPercentile * 100)}%`;
+      const selectionClass = getSelection(data, stats).first === "历史" ? "历史类" : "物理/综合类";
+
+      let level = "本科";
+      let advice = "当前更适合先稳住高中入口成绩，目标放在本科线以上，再通过高一排名变化上调预期。";
+      if (estimatedPercentile <= 0.025) {
+        level = "985 冲刺";
+        advice = `如果高中三年保持${percentText}相对位次，${selectionClass}路径可对标 985 冲刺层，关键是高一不掉出校内头部。`;
+      } else if (estimatedPercentile <= 0.07) {
+        level = "211 / 双一流";
+        advice = `如果高中三年保持${percentText}相对位次，${selectionClass}路径大致对应 211 / 双一流冲刺层。`;
+      } else if (estimatedPercentile <= 0.16) {
+        level = "一本重点";
+        advice = `如果高中三年保持${percentText}相对位次，${selectionClass}路径大致对应一本重点院校竞争带。`;
+      } else if (estimatedPercentile <= 0.32) {
+        level = "一本 / 公办本科";
+        advice = `如果高中三年保持${percentText}相对位次，目标应先放在一本线或优质公办本科。`;
+      }
+
+      return {
+        level,
+        rankText: `${data.city || cityMeta.name}约 ${cityMeta.cohort.toLocaleString("zh-CN")} 名中考生，当前总分约处于市排${percentText}，约第 ${rank.toLocaleString("zh-CN")} 名附近。`,
+        estimate: advice,
+        method: "此处是 demo 估算。正式版建议按地区、年份、选科、分数/位次接入近年一分一段表，再校准到具体院校层次。",
+        tag: `参考：市排${percentText}`
+      };
+    }
+
+    function getHighSchoolPlan(data, stats, projection) {
+      const selection = getSelection(data, stats);
+      const weak = stats.filter((s) => s.ratio !== null && s.ratio < 78 && ["math", "english", "physics", "chemistry", "science", "chinese"].includes(s.key)).map((s) => s.name).slice(0, 2);
+      const focus = weak.length ? weak.join("、") : "数学、物理";
+      const selectText = selection.first === "历史" ? "历史类优势" : "物理类承接";
+      return {
+        tag: projection.level.includes("985") ? "高一保头部，高二冲强基" : "高一先定选科，高二拉开排名",
+        items: [
+          ["高一上 适应", `先稳住${focus}，完成初高中方法切换，第一次月考后判断${selectText}是否成立。`],
+          ["高一下 定科", "结合校内排名、月考波动和专业方向确定选科，不用一次考试决定，但不能拖到高二。"],
+          ["高二 提速", `围绕${projection.level}目标层次建立优势科目，理科重题型迁移，文科重表达和材料分析。`],
+          ["高三 定位", "用省模考位次对照一分一段和院校投档线，形成冲稳保梯度，而不是只看单次分数。"]
+        ]
+      };
+    }
+
+    function getSalesTalk(data, profile, projection, plan) {
+      const target = data.school || "目标高中";
+      const insight = extractNotesInsight(data.notes || "");
+      const noteBridge = insight.summary ? `补充信息里提到：${insight.summary}。` : "补充信息暂未填写，先按成绩和地区做基础判断。";
+      const concernBridge = insight.concerns.length ? `先回应家长最在意的${insight.concerns.join("、")}，再进入方案。` : "先让家长确认规划图里的分数层次和暑假重点，再进入课程建议。";
+      const courseSubjects = recommendCourseSubjects(data, plan, insight);
+      return [
+        ["开场定位", `先不要直接讲课程，先帮家长确认三个问题：当前总分在${data.city}大概对应什么层次、孩子高中是否还能保留${projection.level}目标、暑假最该抓哪两科。${noteBridge}`],
+        ["家长顾虑处理", `${concernBridge} 话术可以说：“这张图不是吓您焦虑，而是把中考后的选科、高一开局和三年高考目标放在一条线上看。”`],
+        ["痛点推进", `可以这样说：孩子现在不是简单补弱科，而是从中考分数切换到高考路径。${target === "目标高中" ? "目标高中还没确定" : `目标是${target}`}，更要先判断高一开学会不会因为学习方式变化掉队。`],
+        ["线上初升高课程切入", `推荐领世线上初升高精品课，先从${courseSubjects}切入。核心卖点是 12 人小班、数理化英覆盖、主讲老师亲自答疑，不是“给答案”，而是带孩子从初中记忆模仿切到高中推理构建。`],
+        ["套餐推荐逻辑", `如果家长预算谨慎，先推任意 2 科联报；如果家长已经认可暑假窗口的重要性，优先推任意 3 科联报，因为 3 科只比 2 科多 ¥640，但多 12 节课，单科成本更低。`],
+        ["转化动作", `围绕${profile.type}沟通：先发规划图建立专业感，再约一次 15 分钟诊断，把${plan.focus}拆成暑假执行方案。最后落到“先测评，再定 2 科还是 3 科”，不要一上来只报价。`]
+      ];
+    }
+
+    function extractNotesInsight(notes) {
+      const text = notes.trim();
+      if (!text) return { summary: "", concerns: [], tags: [] };
+      const tags = [];
+      const concerns = [];
+      const rules = [
+        [/线上|网课|直播|互动/, "线上效果", "担心线上课效果"],
+        [/自律|拖拉|手机|监督|懒/, "学习自律", "担心孩子执行力"],
+        [/物理|理科|受力|运动/, "物理", "物理承接"],
+        [/化学|方程|实验|离子/, "化学", "化学基础"],
+        [/数学|函数|几何|代数/, "数学", "数学方法"],
+        [/英语|单词|阅读|语法/, "英语", "英语习惯"],
+        [/焦虑|担心|怕|不确定|迷茫/, "家长焦虑", "升学焦虑"],
+        [/医学|医生|药学|临床/, "医学方向", "专业方向"],
+        [/计算机|理工|人工智能|工程/, "理工方向", "专业方向"]
+      ];
+      rules.forEach(([regex, tag, concern]) => {
+        if (regex.test(text)) {
+          tags.push(tag);
+          concerns.push(concern);
+        }
+      });
+      const clean = text.replace(/\s+/g, " ");
+      return {
+        summary: clean.length > 58 ? `${clean.slice(0, 58)}...` : clean,
+        concerns: [...new Set(concerns)].slice(0, 3),
+        tags: [...new Set(tags)]
+      };
+    }
+
+    function recommendCourseSubjects(data, plan, insight) {
+      const tags = insight.tags.join(",");
+      if (/医学方向/.test(tags)) return "物理+化学+生物相关衔接，优先物理、化学";
+      if (/理工方向/.test(tags)) return "数学+物理+化学";
+      if (/英语/.test(tags)) return `${plan.focus}+英语`;
+      if (data.direction === "medicine") return "物理+化学+英语";
+      if (data.direction === "humanities") return "数学+英语";
+      return plan.focus;
+    }
+
+    function getFitExplanation(fit, targetText) {
+      const target = targetText === "未填写" ? "目标高中" : targetText;
+      if (fit >= 90) {
+        return {
+          title: `${fit} 分：和${target}高度匹配`,
+          copy: "这个分数说明孩子当前基础已经比较接近目标要求。接下来不是盲目加量，而是高一开学后守住校内排名，并尽快确定优势选科。"
+        };
+      }
+      if (fit >= 80) {
+        return {
+          title: `${fit} 分：比较匹配，但暑假不能松`,
+          copy: "这个分数说明孩子有冲目标高中的基础，但高中难度会明显上台阶。暑假要提前做数学、英语、理科/综合的衔接，避免开学第一次月考掉队。"
+        };
+      }
+      if (fit >= 70) {
+        return {
+          title: `${fit} 分：可以冲刺，需要补关键科目`,
+          copy: "这个分数说明目标还有挑战。家长不要只看总分，要尽快找出最影响升学的短板科目，用暑假做集中突破，同时准备一个更稳妥的高中选择。"
+        };
+      }
+      if (fit >= 60) {
+        return {
+          title: `${fit} 分：风险偏高，建议做目标梯度`,
+          copy: "这个分数说明距离目标高中还有明显差距。建议同时设置冲刺、稳妥、保底三个层级，暑假计划先抓最能提分的两门课。"
+        };
+      }
+      return {
+        title: `${fit} 分：目标偏高，需要重新评估`,
+        copy: "这个分数说明当前目标可能过高。建议先稳定高中入口成绩，再根据后续诊断结果调整目标，不要只盯一个学校。"
+      };
+    }
+
+    function render() {
+      const data = getData();
+      const profileConfig = getScoreProfile(data);
+      const rule = getProvinceRule(data);
+      const stats = getSubjectStats(data);
+      const subjectTotal = stats.reduce((sum, item) => sum + item.score, 0);
+      const total = data.totalManual > 0 ? Math.min(data.totalManual, profileConfig.total) : subjectTotal;
+      const ratio = total / profileConfig.total;
+      const targetText = data.school || "未填写";
+      const fit = Math.max(52, Math.min(96, Math.round(ratio * 92 + (/四大|重点|名校|实验|外国语|一中|附中/.test(targetText) ? -4 : 4))));
+      const profile = getProfile(data, stats, total, profileConfig.total);
+      const selection = getSelection(data, stats);
+      const plan = getPlan(data, stats);
+      const projection = getGaokaoProjection(data, stats, total, profileConfig.total);
+      const highPlan = getHighSchoolPlan(data, stats, projection);
+      const salesTalk = getSalesTalk(data, profile, projection, plan);
+      const weakNames = stats.filter((s) => s.ratio !== null && s.ratio < 74).map((s) => s.name).slice(0, 3);
+      const strongNames = stats.filter((s) => s.ratio !== null && s.ratio >= 88).map((s) => s.name).slice(0, 3);
+      const onlyTotal = !stats.some((s) => s.hasScore);
+
+      $("#reportLocation").textContent = `${data.province} ${data.city} · ${rule.location}`;
+      $("#reportTitle").textContent = `${data.name || "学生"}初升高选科与暑假规划`;
+      $("#reportSummary").textContent = `${profileConfig.note}。中考之后选科才是关键，暑假是从初中“记忆+模仿”切换到高中“推理+构建”的窗口。`;
+      $("#fitScore").textContent = fit;
+      const fitExplain = getFitExplanation(fit, targetText);
+      $("#fitExplainTitle").textContent = fitExplain.title;
+      $("#fitExplainCopy").textContent = fitExplain.copy;
+      $("#totalScore").textContent = `${total} / ${profileConfig.total}`;
+      $("#targetSchool").textContent = data.school || "未填写";
+      $("#firstChoice").textContent = selection.first;
+      $("#summerFocus").textContent = plan.focus;
+      $("#gaokaoLevel").textContent = projection.level;
+
+      const noteInsight = extractNotesInsight(data.notes || "");
+      $("#profileType").textContent = profile.type;
+      $("#profileCopy").textContent = noteInsight.summary
+        ? `${profile.copy} 结合补充信息，当前还需要重点关注：${noteInsight.summary}`
+        : profile.copy;
+      $("#profileBars").innerHTML = profile.bars.map(([label, value]) => `
+        <div class="bar-row">
+          <span>${label}</span>
+          <div class="bar-track"><div class="bar-fill" style="width:${value}%"></div></div>
+          <b>${value}</b>
+        </div>
+      `).join("");
+
+      $("#examMode").textContent = rule.mode;
+      $("#examRule").textContent = rule.rule;
+      $("#examRisk").textContent = rule.risk;
+      $("#parentTalk").textContent = rule.talk;
+
+      $("#rankTag").textContent = projection.tag;
+      $("#rankEstimate").textContent = projection.rankText;
+      $("#gaokaoEstimate").textContent = projection.estimate;
+      $("#rankMethod").textContent = projection.method;
+
+      $("#subjectLabel").textContent = weakNames.length ? `${weakNames.join("、")}需暑假衔接` : "整体稳定，冲刺高一领先";
+      $("#subjectList").innerHTML = onlyTotal ? `
+        <div class="mini-card">
+          <strong>只填写了总分</strong>
+          <p>当前可以做总分层次预估和高中路径规划；如需更准的选科建议，建议补充数学、英语、理科/综合科目成绩。</p>
+        </div>
+      ` : stats.map((item) => {
+        const level = levelFor(item.ratio);
+        return `
+          <div class="subject-row">
+            <strong>${item.name}</strong>
+            <div class="bar-track"><div class="bar-fill" style="width:${item.ratio === null ? 0 : Math.min(100, item.ratio)}%"></div></div>
+            <span class="level ${level.cls}">${level.text}</span>
+          </div>
+        `;
+      }).join("");
+      $("#subjectInsight").textContent = onlyTotal
+        ? `目前只有总分，报告先按${data.city}总分口径判断升学层次。下一步建议补齐数学、英语、理科/综合三类成绩，否则选科判断只能给方向，不能精确到组合风险。`
+        : weakNames.length
+        ? `${strongNames.length ? `${strongNames.join("、")}能支撑高一开局，` : ""}${weakNames.join("、")}已经进入高中选科关键区。建议不要等开学后再补，暑假先把核心概念和过程分析打通。`
+        : "各科基础较均衡，暑假目标不是简单提前学，而是建立高中题型框架和稳定复盘习惯，争取开学第一次月考建立信心。";
+
+      $("#comboTag").textContent = selection.tag;
+      $("#comboA").textContent = selection.a[0];
+      $("#comboAReason").textContent = selection.a[1];
+      $("#comboB").textContent = selection.b[0];
+      $("#comboBReason").textContent = selection.b[1];
+      $("#comboC").textContent = selection.c[0];
+      $("#comboCReason").textContent = selection.c[1];
+
+      $("#summerPlan").innerHTML = plan.items.map(([title, copy]) => `
+        <div class="plan-item">
+          <strong>${title}</strong>
+          <p>${copy}</p>
+        </div>
+      `).join("");
+
+      $("#highPlanTag").textContent = highPlan.tag;
+      $("#highSchoolPlan").innerHTML = highPlan.items.map(([title, copy]) => `
+        <div class="plan-item">
+          <strong>${title}</strong>
+          <p>${copy}</p>
+        </div>
+      `).join("");
+
+      $("#salesTalk").innerHTML = salesTalk.map(([title, copy]) => `
+        <div class="sales-card">
+          <strong>${title}</strong>
+          <p>${copy}</p>
+        </div>
+      `).join("");
+    }
+
+    updateCityOptions("深圳");
+    renderScoreFields();
+
+    form.elements.province.addEventListener("change", () => {
+      updateCityOptions();
+      form.elements.totalManual.value = "";
+      renderScoreFields();
+      render();
+    });
+
+    form.elements.city.addEventListener("change", () => {
+      form.elements.totalManual.value = "";
+      renderScoreFields();
+      render();
+    });
+
+    ["name", "school", "direction", "totalManual", "notes"].forEach((name) => {
+      form.elements[name].addEventListener("input", render);
+    });
+
+    document.querySelector("#sampleBtn").addEventListener("click", () => {
+      const sample = samples[Math.floor(Math.random() * samples.length)];
+      if (sample.province) form.elements.province.value = sample.province;
+      updateCityOptions(sample.city);
+      form.elements.totalManual.value = sample.totalManual || "";
+      renderScoreFields();
+      getFields().forEach((field) => {
+        if (field.name in sample) field.value = sample[field.name];
+      });
+      render();
+    });
+
+    document.querySelector("#downloadBtn").addEventListener("click", async () => {
+      const card = document.querySelector("#reportCard");
+      const canvas = await html2canvas(card, {
+        backgroundColor: "#f6f2ea",
+        scale: Math.min(2, window.devicePixelRatio || 1.5),
+        useCORS: true
+      });
+      const link = document.createElement("a");
+      link.download = `${getData().name || "学生"}-初升高规划图.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    });
+
+    render();
+  </script>
+</body>
+</html>

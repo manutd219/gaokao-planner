@@ -1,0 +1,14 @@
+{
+  "name": "gaokao-planner",
+  "version": "1.0.0",
+  "private": true,
+  "description": "初升高选科与暑假规划工具，包含销售登录、记录保存和后台列表。",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "NODE_ENV=development node server.js",
+    "check": "node --check server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
