@@ -1461,6 +1461,7 @@
       cd710: { total: 710, note: "成都中考参考口径", subjects: [["chinese", "语文", 150, 122], ["math", "数学", 150, 126], ["english", "英语", 150, 129], ["physics", "物理", 70, 58], ["chemistry", "化学", 50, 42], ["history", "历史", 20, 17], ["politics", "道法", 20, 17], ["pe", "体育", 60, 56], ["lab", "实验/综合", 40, 35]] },
       hz600: { total: 600, note: "杭州中考参考口径", subjects: [["chinese", "语文", 120, 102], ["math", "数学", 120, 101], ["english", "英语", 120, 105], ["science", "科学", 160, 132], ["society", "社会", 50, 42], ["pe", "体育", 30, 28]] },
       bj660: { total: 660, note: "北京中考参考口径", subjects: [["chinese", "语文", 100, 84], ["math", "数学", 100, 86], ["english", "英语", 100, 88], ["physics", "物理", 80, 68], ["politics", "道法", 80, 68], ["history", "历史", 80, 66], ["geography", "地理/生物", 80, 66], ["pe", "体育", 40, 37]] },
+      hb800: { total: 800, note: "河北2026中考参考口径：文化课614分、体育与健康50分、其他科目136分", subjects: [["chinese", "语文", 120, ""], ["math", "数学", 120, ""], ["english", "外语", 120, ""], ["politics", "道德与法治", 60, ""], ["history", "历史", 60, ""], ["physics", "物理", 68, ""], ["chemistry", "化学", 66, ""], ["pe", "体育与健康", 50, ""], ["otherSubjects", "其他科目", 136, ""]] },
       tj800: { total: 800, note: "天津中考参考口径", subjects: [["chinese", "语文", 120, ""], ["math", "数学", 120, ""], ["english", "英语", 120, ""], ["physics", "物理", 100, ""], ["chemistry", "化学", 100, ""], ["history", "历史", 100, ""], ["politics", "道法", 100, ""], ["pe", "体育", 40, ""]] },
       full800: { total: 800, note: "省市中考参考口径", subjects: [["chinese", "语文", 120, ""], ["math", "数学", 120, ""], ["english", "英语", 120, ""], ["physics", "物理", 100, ""], ["chemistry", "化学", 100, ""], ["history", "历史", 80, ""], ["politics", "道法", 80, ""], ["pe", "体育", 80, ""]] },
       full750: { total: 750, note: "省市中考参考口径", subjects: [["chinese", "语文", 120, ""], ["math", "数学", 120, ""], ["english", "英语", 120, ""], ["physics", "物理", 80, ""], ["chemistry", "化学", 70, ""], ["history", "历史", 60, ""], ["politics", "道法", 60, ""], ["pe", "体育", 60, ""], ["bioGeo", "生地/综合", 60, ""]] },
@@ -1482,7 +1483,7 @@
     const provinceTemplateMap = {
       北京: "bj660",
       天津: "tj800",
-      河北: "full800",
+      河北: "hb800",
       山西: "full750",
       内蒙古: "scienceSocial650",
       辽宁: "full800",
@@ -1849,8 +1850,10 @@
         history: ["历史"],
         politics: ["道法", "政治", "道德与法治"],
         pe: ["体育"],
+        otherSubjects: ["其他科目", "其他科目合计", "八年级科目", "八年级考试", "地生信", "地理生物信息", "地理生物信息科技"],
         geography: ["地理"],
         biology: ["生物"],
+        information: ["信息科技", "信息技术"],
         bioGeo: ["生地", "地生", "生地综合"],
         society: ["社会", "文综", "文科综合"],
         lab: ["实验", "综合"]
@@ -1872,6 +1875,10 @@
       }
       if (!result.bioGeo && Number.isFinite(result.biology) && Number.isFinite(result.geography)) {
         result.bioGeo = result.biology + result.geography;
+      }
+      if (!result.otherSubjects) {
+        const otherTotal = ["geography", "biology", "information"].reduce((sum, key) => sum + (Number.isFinite(result[key]) ? result[key] : 0), 0);
+        if (otherTotal > 0) result.otherSubjects = otherTotal;
       }
       return result;
     }
