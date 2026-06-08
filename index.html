@@ -2054,54 +2054,211 @@
     }
 
     function getSalesTalk(data, profile, projection, plan) {
-      const target = data.school || "目标高中";
+      const stats = getSubjectStats(data);
+      const scoreProfile = getScoreProfile(data);
+      const total = data.totalManual > 0
+        ? Math.min(data.totalManual, scoreProfile.total)
+        : stats.reduce((sum, item) => sum + item.score, 0);
+      const rule = getProvinceRule(data);
       const insight = extractNotesInsight(data.notes || "");
-      const parentProfile = getParentCommunicationProfile(data, profile, projection, insight);
-      const noteBridge = insight.summary ? `补充信息里提到：${insight.summary}。` : "补充信息暂未填写，先按成绩和地区做基础判断。";
-      const concernBridge = insight.concerns.length ? `家长当前最在意的是${insight.concerns.join("、")}。` : "家长目前还没有明确表达顾虑。";
-      const weakFocus = plan.focus || "数学和物理/化学";
+      const salesProfile = buildStudentSalesProfile(data, stats, total, scoreProfile.total, profile, projection, plan, insight, rule);
+      const parentProfile = getParentCommunicationProfile(data, profile, projection, insight, salesProfile);
+      const target = data.school || "目标高中";
+      const noteBridge = insight.summary
+        ? `补充信息里提到：${insight.summary.replace(/[。；;,.，、\\s]+$/g, "")}。这句话要转成判断，不要只复述给家长。`
+        : `补充信息暂未填写，先按${data.province}${data.city}的分数层次、学科结构和高考模式做判断。`;
+      const localBridge = `${data.province}${data.city}当前按${rule.mode || rule.location}规划，高中阶段要从中考科目切到高考科目，${rule.risk}`;
+      const weakFocus = salesProfile.focusSubjects.join("、");
+      const scoreBridge = salesProfile.onlyTotal
+        ? `目前只有总分，先用${total}/${scoreProfile.total}判断层次；下一步必须补做${weakFocus}诊断，否则容易把总分问题误判成某一科问题。`
+        : `当前最影响高一开局的是${weakFocus}，其中${salesProfile.evidence}。`;
+
       return [
-        ["家长沟通画像", `${parentProfile.type}。沟通重点：${parentProfile.strategy}\n\n${noteBridge}\n\n顾问注意：这一步不要急着给方案，先让家长感觉“你看懂了我家孩子”。如果家长愿意继续问，说明信任入口已经打开。`],
-        ["开场第一句话", `建议先说：“我先不急着给您推荐课，先把孩子现在的总分位置、${target === "目标高中" ? "目标高中梯度" : `${target}的匹配度`}、以及暑假最该抓的科目讲清楚。这样您判断要不要学，会比单纯听课程介绍更准。”\n\n追问一句：“您现在更担心孩子进不了目标高中，还是担心进了高中以后跟不上？”`],
-        ["为什么要学", `核心表达：初升高不是把初三内容再复习一遍，而是学习方式换挡。初中很多题靠记忆和模仿，高中要靠推理、建模和过程分析。孩子现在要解决的不是“多学一点”，而是“开学后能不能听懂高中老师讲课”。\n\n可以补一句：“如果孩子只是中考分数不错，但没有提前适应高中方法，高一第一次月考很容易出现心理落差。”`],
-        ["紧迫性怎么讲", `${concernBridge}\n\n不要说成“孩子不行”，要说成“窗口期很短”：中考结束到高一开学这段时间，是少数能提前适应高中方法的阶段；一旦开学后第一次月考失利，孩子信心和选科判断都会被影响。\n\n可以这样表达：“现在不是制造焦虑，是提前把最容易出问题的地方看见。”`],
-        ["为什么现在学", `要让家长感受到“现在不做，开学后成本更高”：暑假只需要集中处理${weakFocus}，但开学后会同时面对新课、作业、月考、社团和选科压力，到时候再补就不是补知识，而是在补排名和信心。\n\n沟通重点：把“暑假学习”解释成降低高一试错成本，而不是多报一个班。`],
-        ["如何说明紧迫性", `建议用对比句：“现在学，是用 4 周换高一开局稳定；开学后再学，是一边追新课一边补旧方法。”\n\n再补一句：“孩子中考分数不错，不代表高中自动延续优势，真正拉开差距的是高一前两个月。现在如果不把${weakFocus}先稳住，开学后很可能一边听新课一边补旧思维。”`],
-        ["异议处理", `${parentProfile.objection}\n\n如果家长说“我们先自己学看看”，可以接：“可以自己学，但最好别完全靠自己摸索。初升高最怕的是孩子觉得自己学了很多，开学发现题目思路完全不同。”`],
-        ["推进下一步", `不要直接催促家长做决定。可以这样收口：“如果您认可这个判断，我们今天先把${weakFocus}定下来，不是为了多报课，而是为了不让孩子把整个暑假用散。合适的时间和班型需要提前匹配，越晚越难排到适合孩子的节奏。”\n\n最后落点：“先把诊断和排课锁住，后面再根据孩子接受度微调科目。”`]
+        ["家长沟通画像", `${parentProfile.type}。沟通方式：${parentProfile.strategy}\n\n学生判断：${salesProfile.type}，${salesProfile.summary}\n\n${noteBridge}\n\n顾问提醒：第一轮沟通先输出“我看见了孩子的具体风险”，不要直接进入课程介绍。`],
+        ["开场第一句话", `${parentProfile.opening}\n\n可以接一句：“我先按孩子现在的分数层次、${target === "目标高中" ? "目标高中梯度" : `${target}目标`}和${data.province}${data.city}高中学习节奏，帮您判断暑假最该处理哪一件事。”\n\n追问方向：${parentProfile.probe}`],
+        ["为什么要学", `${salesProfile.whyLearn}\n\n落到这个孩子身上：${scoreBridge}\n\n不要泛泛说“初升高很难”，要说清楚孩子会在哪个环节吃亏：听课、作业、第一次月考、选科判断，至少说中两个。`],
+        ["当地考情切入", `${localBridge}\n\n对家长的表达可以是：“中考结束不是学习结束，而是评价体系换了。中考看总分和校线，高中更看校内排名、选科组合和高考科目承接。${salesProfile.localRisk}”`],
+        ["为什么现在学", `${salesProfile.whyNow}\n\n关键表达：“现在不是多学一轮，而是把开学后最容易暴露的问题提前看见。暑假能集中处理${weakFocus}；开学后再补，就是一边追新课一边补旧方法。”`],
+        ["紧迫性怎么讲", `${parentProfile.urgency}\n\n结合学生说：“如果${weakFocus}不开学前先稳定，第一次月考暴露的就不只是分数问题，还会影响孩子对自己能不能适应高中、该不该坚持当前选科方向的判断。”`],
+        ["异议处理", `${parentProfile.objection}\n\n如果家长说“先自己学看看”，不要否定自学，可以接：“可以自己学，但建议至少先做一次诊断，把${weakFocus}里最影响高一听课的部分找出来。初升高最怕的是孩子觉得自己学了很多，开学发现方法不对。”`],
+        ["推进下一步", `${salesProfile.nextStep}\n\n收口建议：“我们今天先不把科目铺太多，只把${weakFocus}锁定下来。先诊断、再排课、再看孩子接受度微调，这样家长决策压力最低，孩子也不会觉得暑假被塞满。”`]
       ];
     }
 
-    function getParentCommunicationProfile(data, profile, projection, insight) {
-      const text = `${data.notes || ""} ${insight.tags.join(" ")} ${profile.type}`;
+    function buildStudentSalesProfile(data, stats, total, totalMax, profile, projection, plan, insight, rule) {
+      const highStats = getHighSchoolSubjectStats(data, stats);
+      const filled = highStats.filter((item) => item.ratio !== null);
+      const noteHints = getSalesSubjectHints(data.notes || "");
+      const weak = filled
+        .filter((item) => item.ratio < 78)
+        .sort((a, b) => a.ratio - b.ratio);
+      const strong = filled
+        .filter((item) => item.ratio >= 88)
+        .sort((a, b) => b.ratio - a.ratio);
+      const spread = filled.length > 1 ? Math.max(...filled.map((s) => s.ratio)) - Math.min(...filled.map((s) => s.ratio)) : 0;
+      const ratio = totalMax ? total / totalMax : 0;
+      const onlyTotal = !stats.some((s) => s.hasScore);
+      const selection = getSelection(data, stats);
+      const directionText = data.direction === "medicine"
+        ? "医学/药学方向"
+        : data.direction === "humanities"
+          ? "人文社科方向"
+          : data.direction === "science"
+            ? "理工/计算机方向"
+            : "方向暂不确定";
+      const noteSubject = highStats.find((item) => insight.tags.includes(item.name));
+      const focusCandidates = [
+        ...noteHints.map((hint) => highStats.find((item) => item.key === hint.key)).filter(Boolean),
+        ...(weak.length ? weak : []),
+        ...(noteSubject ? [noteSubject] : []),
+        ...highStats.filter((item) => ["math", "english", "physics", "chemistry", "chinese"].includes(item.key) && item.ratio !== null).sort((a, b) => (a.ratio || 100) - (b.ratio || 100))
+      ];
+      const focusSubjects = [...new Set(focusCandidates.map((item) => item.name))]
+        .filter(Boolean)
+        .slice(0, 2);
+      if (!focusSubjects.length) {
+        focusSubjects.push(...(plan.focus || "数学 + 英语").split(/\s*\+\s*|\s*、\s*/).filter(Boolean).slice(0, 2));
+      }
+      const noteEvidence = noteHints.length ? noteHints.map((hint) => hint.reason).join("、") : "";
+      const evidence = noteEvidence || (weak.length
+        ? weak.slice(0, 2).map((item) => `${item.name}${item.ratio}分位表现`).join("、")
+        : strong.length
+          ? `${strong[0].name}有优势，但需要看高中题型能否延续`
+          : "学科分未补全，当前只能先看总分层次");
+
+      let type = "均衡观察型";
+      let summary = `当前按${projection.level}目标层次做规划，重点是用暑假验证${selection.first}路径是否能承接。`;
+      let whyLearn = "初升高不是把初三内容再复习一遍，而是学习方式切换：初中更多靠记忆和模仿，高中更看推理、建模、过程分析和表达完整度。";
+      let whyNow = `暑假是从中考分数切到高中排名的缓冲期。现在处理${focusSubjects.join("、")}，成本是集中训练；开学后再补，成本会变成新课、作业、月考和心态一起压上来。`;
+      let localRisk = `${rule.talk}`;
+      let nextStep = `先安排${focusSubjects.join("、")}的入门诊断，判断孩子是概念没接上、方法没切换，还是训练量不足。`;
+
+      if (onlyTotal) {
+        type = "总分待拆解型";
+        summary = `目前只有总分${total}/${totalMax}，可以判断大致层次，但不能准确判断哪一科拖后腿。`;
+        whyLearn = "只有总分时，家长最容易误判：以为是孩子整体不够努力，实际可能是一两科方法没切换，或者中考强项到了高中不再同口径计分。";
+        whyNow = `现在先做${focusSubjects.join("、")}诊断，能在开学前把问题拆清楚；如果等第一次月考后再拆，家长看到的是排名下滑，孩子感受到的是信心受挫。`;
+        localRisk = `当地高考看的是高中科目和校内排名，只有中考总分不能直接判断选科安全度。${rule.talk}`;
+        nextStep = `不要直接铺课程，先把总分拆成${focusSubjects.join("、")}诊断，再决定主补科目。`;
+      } else if (ratio < 0.72) {
+        type = "基础承压型";
+        summary = `总分处在承接压力较高区间，先解决高一能不能听懂、作业能不能完成的问题。`;
+        whyLearn = `孩子现在最需要的不是提前学很多，而是把${focusSubjects.join("、")}里影响高中听课的基础补上。否则开学后老师讲新内容，孩子还在补初中方法。`;
+        whyNow = "基础承压的学生最怕等开学后再补，因为那时每天都有新课和作业，补课会变成追赶，不再是预防。";
+        localRisk = `${data.province}${data.city}进入高中后评价会转向校内排名和高考科目，基础承压学生如果第一次月考失利，后面选科和信心都会被动。`;
+        nextStep = `先定${focusSubjects.join("、")}两科，不做大而全计划；目标是让孩子开学第一月能跟上课和作业。`;
+      } else if (spread >= 18 || weak.length) {
+        type = "偏科风险型";
+        summary = `总分不一定差，但学科结构不均衡，短板会在高一第一次月考被放大。`;
+        whyLearn = `这类孩子不是所有科都要补，而是要先处理${focusSubjects.join("、")}。高中题目综合度提升后，短板科会直接拖累总分排名，也会影响选科判断。`;
+        whyNow = `偏科问题越早处理越省力。暑假能单点突破${focusSubjects.join("、")}，开学后再补就会被新课节奏带着跑。`;
+        localRisk = `当地新高考模式下，选科不是高考前才决定的事；${focusSubjects.join("、")}如果高一开局不稳，会影响后续是否敢坚持${selection.first}路径。`;
+        nextStep = `先围绕${focusSubjects.join("、")}做薄弱点拆解：是知识漏洞、题型迁移，还是表达/过程分丢失。`;
+      } else if (projection.level.includes("985") || projection.level.includes("211") || ratio >= 0.86) {
+        type = "高位冲刺型";
+        summary = `当前分数层次不低，销售重点不是制造基础焦虑，而是提醒优势能否延续到高中排名。`;
+        whyLearn = `高分学生暑假要学的不是更多初中题，而是把优势迁移到高中题型。尤其${focusSubjects.join("、")}，要提前适应更长过程、更强综合和更高表达要求。`;
+        whyNow = "越是目标高的孩子，越不能把高一前两个月当适应期浪费掉。别人开学后才摸索方法，高位学生暑假就要先把高中解题框架建起来。";
+        localRisk = `${projection.level}目标层次看的是高中三年相对位次保持，不是中考分数自然延续。${rule.talk}`;
+        nextStep = `先做${focusSubjects.join("、")}高一入门拔高诊断，目标是保排名，不是补基础。`;
+      } else if (/物化|理科|医学|计算机|理工/.test(`${directionText} ${insight.tags.join(" ")}`)) {
+        type = "理科路径确认型";
+        summary = `方向偏${directionText}，要重点确认数学、物理、化学能不能承接高中难度。`;
+        whyLearn = `如果后续想保理工、医学或计算机方向，${focusSubjects.join("、")}不是普通学科，而是专业通道。高中物理化学分开考、难度上台阶，不能只看中考合卷或记忆题表现。`;
+        whyNow = "理科路径的判断窗口在高一前两次考试之前。暑假先看承接能力，开学后才能决定是坚定物化，还是及时调整组合。";
+        localRisk = `${rule.rule} 所以当前不是简单问“孩子喜不喜欢理科”，而是要看${focusSubjects.join("、")}能不能承接高中模型题和过程分析。`;
+        nextStep = `先锁${focusSubjects.join("、")}，用入门测试判断是否适合继续保物化专业面。`;
+      }
+
+      return {
+        type,
+        summary,
+        whyLearn,
+        whyNow,
+        localRisk,
+        nextStep,
+        focusSubjects,
+        evidence,
+        onlyTotal,
+        directionText
+      };
+    }
+
+    function getSalesSubjectHints(notes) {
+      const text = normalizeHighSchoolTerms(notes || "");
+      const hints = [];
+      const add = (key, name, reason) => {
+        if (!hints.some((item) => item.key === key)) hints.push({ key, name, reason });
+      };
+      const weakWords = "拖分|弱|薄弱|差|低|不稳|跟不上|担心|怕|补";
+      if (new RegExp(`语文.{0,12}(${weakWords})|(${weakWords}).{0,12}语文`).test(text)) {
+        add("chinese", "语文", "补充信息明确提到语文拖分/不稳");
+      }
+      if (new RegExp(`数学.{0,12}(${weakWords}|50|60|70|80)`).test(text)) {
+        add("math", "数学", "补充信息明确提到数学需要处理");
+      }
+      if (new RegExp(`英语.{0,12}(${weakWords}|50|60|70)`).test(text)) {
+        add("english", "英语", "补充信息明确提到英语分数或习惯风险");
+      }
+      if (/物理|物化|理科/.test(text) && new RegExp(`物理.{0,14}(${weakWords}|衔接|承接)|物化`).test(text)) {
+        add("physics", "物理", "补充信息出现物化/物理承接信号");
+      }
+      if (/化学|物化/.test(text) && new RegExp(`化学.{0,14}(${weakWords}|60|56|衔接|承接)|物化`).test(text)) {
+        add("chemistry", "化学", "补充信息出现物化/化学承接信号");
+      }
+      if (/医学|临床|药学/.test(text)) {
+        add("chemistry", "化学", "目标方向需要化学通道支撑");
+      }
+      return hints.slice(0, 3);
+    }
+
+    function getParentCommunicationProfile(data, profile, projection, insight, salesProfile) {
+      const text = `${data.notes || ""} ${insight.tags.join(" ")} ${profile.type} ${salesProfile.type}`;
       let type = "稳妥规划型家长";
-      let style = "需要确定感的";
       let strategy = "少讲概念，多给路径、时间表和下一步动作。";
-      let objection = "如果家长觉得“暑假先休息”，不要反驳，先认可中考辛苦，再说明高中第一次月考通常会暴露学习方式差异，暑假只抓关键科目即可。";
+      let opening = "建议先说：“我先不急着给您下结论，先把孩子现在最可能影响高一开局的点拆出来。”";
+      let probe = "您现在更想先判断目标高中，还是更担心进高中以后跟不上？";
+      let urgency = "不要用吓人的表达。重点讲“暑假是低成本试错窗口”：现在发现问题，只是调整学习节奏；开学后发现问题，往往已经表现为排名和信心波动。";
+      let objection = "如果家长觉得“暑假先休息”，先认可中考辛苦，再说明暑假不是满负荷学习，而是先把最影响开学的两科处理掉。";
 
       if (/焦虑|担心|怕|迷茫|家长焦虑/.test(text)) {
         type = "焦虑安全型家长";
-        style = "情绪敏感、需要被安抚的";
-        strategy = "先共情，再给低风险方案；避免上来制造更强焦虑。";
-        objection = "如果家长反复问“会不会跟不上”，先说“现在还不是定结果的时候”，再用规划图说明：先抓数学和理科承接，开学用第一次月考校准，不把压力一次性压给孩子。";
-      } else if (/985|211|数据|排名|位次|分数|层次/.test(text) || projection.level.includes("985")) {
+        strategy = "先安抚，再拆风险；不要上来加压，要让家长觉得问题可控。";
+        opening = "建议先说：“您现在担心是正常的，但我们先不把问题放大，先看孩子最需要提前处理的是哪两科。”";
+        probe = "您最担心的是孩子进不了目标高中，还是担心进了以后第一次月考跟不上？";
+        urgency = "紧迫性要讲成“提前减少不确定”：现在先把风险科目看清楚，家长和孩子都会更稳；等开学后再看，容易变成一边焦虑一边补。";
+        objection = "如果家长反复问“会不会跟不上”，先说“现在还不是定结果的时候”，再用诊断说明：先抓关键科目，开学用第一次月考校准，不把压力一次性压给孩子。";
+      } else if (/985|211|数据|排名|位次|分数|层次|高位冲刺/.test(text)) {
         type = "数据决策型家长";
-        style = "看重证据和投入产出的";
-        strategy = "先讲位次、目标层次和科目风险，再讲为什么暑假是最小成本窗口。";
-        objection = "如果家长问“值不值”，不要讲优惠，讲代价：现在花时间解决方法问题，开学后少承受一次月考崩盘和选科摇摆。让家长把费用理解成“买高一开局稳定性”。";
+        strategy = "先讲分数层次、位次假设和科目风险，再讲暑假的投入产出。";
+        opening = `建议先说：“按现在的分数层次，孩子大致对应${projection.level}目标带，但高中能不能延续，要看关键科目开局排名。”`;
+        probe = "您更关注未来大学层次，还是更关注孩子高一能不能保持校内排名？";
+        urgency = "紧迫性用数据逻辑讲：中考分数只是入口，高中看持续排名。暑假少处理一个关键短板，开学第一次月考就可能改变家长对目标层次的判断。";
+        objection = "如果家长问“值不值”，不要讲优惠，讲代价：现在解决方法问题，开学后少承受一次月考失利和选科摇摆。";
       } else if (/线上|网课|直播|互动|线上效果/.test(text)) {
         type = "效果怀疑型家长";
-        style = "对线上课有顾虑的";
-        strategy = "先承认线上顾虑，再把话题拉回“暑假必须有人带着完成方法切换”。";
-        objection = "如果家长说“线上课怕没效果”，不要急着辩解线上好，先问：“您最担心的是孩子不听、没人管，还是听了不会用？”再对应解释监督、反馈和答疑机制。";
-      } else if (/自律|拖拉|手机|监督|学习自律/.test(text)) {
+        strategy = "先承认顾虑，再把判断拉回“孩子是否需要外部节奏和反馈”。";
+        opening = "建议先说：“线上效果确实要看孩子状态，所以我不会直接说适合，先看孩子最需要的是讲解、监督，还是答疑反馈。”";
+        probe = "您最担心线上课的问题，是孩子不听、听不懂，还是课后没人盯落实？";
+        urgency = "紧迫性不要讲成必须报线上课，而要讲成必须尽快确定学习方式：暑假试错成本低，开学后再试错会影响新课节奏。";
+        objection = "如果家长说“线上怕没效果”，先问清担心点，再对应讲监督、反馈、答疑；不要直接证明线上一定好。";
+      } else if (/自律|拖拉|手机|监督|懒|学习自律/.test(text)) {
         type = "执行监督型家长";
-        style = "担心孩子坚持不下来的";
-        strategy = "强调暑假最怕散，不是孩子不会学，而是没有外部节奏。";
-        objection = "如果家长担心孩子拖拉，直接说：“所以更不能只买资料或自己规划。这个阶段需要外部节奏，把每天学什么、学到什么程度、错在哪里固定下来。”";
+        strategy = "重点讲节奏和反馈，不要只讲课程内容。";
+        opening = "建议先说：“孩子不是完全不会学，问题可能是暑假没有外部节奏，学什么、学到什么程度、错在哪里都不清楚。”";
+        probe = "孩子平时是不会做，还是知道要做但坚持不下来？";
+        urgency = "紧迫性放在执行上：暑假一散，开学后要同时补节奏和补知识；现在先把每天任务和反馈固定下来，能减少开学后的混乱。";
+        objection = "如果家长担心孩子拖拉，直接说：“所以更不能只买资料或自己规划。这个阶段需要外部节奏，把每天学什么、错在哪里固定下来。”";
+      } else if (/总分待拆解|基础承压/.test(text)) {
+        type = "结果承压型家长";
+        strategy = "少谈远大目标，先给能落地的短期改善路径。";
+        opening = "建议先说：“现在不要急着看三年后的目标，先看开学第一个月孩子能不能听懂、跟上、完成作业。”";
+        probe = "孩子目前最大问题是总分上不去，还是单科明显拖后腿？";
+        urgency = "紧迫性讲成“先保开局”：基础承压的学生等开学后再补，会同时面对新课和旧问题，难度比暑假高很多。";
+        objection = "如果家长说“先看看高中再说”，可以接：“正因为高中还没开始，现在才适合低压力调整；等第一次月考后再说，孩子已经先受了一轮打击。”";
       }
 
-      return { type, style, strategy, objection };
+      return { type, strategy, opening, probe, urgency, objection };
     }
 
     function normalizeHighSchoolTerms(text) {
