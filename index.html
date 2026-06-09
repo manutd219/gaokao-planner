@@ -195,6 +195,17 @@
       gap: 12px;
     }
 
+    .score-tools {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 4px;
+    }
+
+    .score-tools .btn {
+      min-width: 180px;
+      padding: 0 18px;
+    }
+
     label {
       display: grid;
       gap: 7px;
@@ -1084,6 +1095,9 @@
             <input type="number" name="totalManual" value="573" min="0" />
           </label>
           <div class="grid-2" id="scoreFields"></div>
+          <div class="score-tools">
+            <button class="btn btn-secondary" id="sumScoresBtn" type="button">各科求和到总分</button>
+          </div>
         </section>
       </form>
 
@@ -2394,6 +2408,22 @@
       return total > 0 ? total : null;
     }
 
+    function sumVisibleScoresToTotal() {
+      const parsed = {};
+      scoreFields.querySelectorAll("input[data-score-field='1']").forEach((input) => {
+        const value = Number(input.value);
+        if (Number.isFinite(value) && value > 0) {
+          const max = Number(input.dataset.max || input.max || Infinity);
+          parsed[input.name] = Math.min(value, max);
+        }
+      });
+      const total = getAutoTotalFromParsedScores(parsed);
+      if (!Number.isFinite(total)) return;
+      const maxTotal = Number(form.elements.totalManual.max || Infinity);
+      form.elements.totalManual.value = Math.min(total, maxTotal);
+      render();
+    }
+
     function applyScoresFromNotes() {
       const parsed = extractScoresFromText(form.elements.notes.value);
       if (Number.isFinite(parsed.totalManual)) {
@@ -2926,6 +2956,7 @@
 
     document.querySelector("#saveRecordBtn").addEventListener("click", viewPlanning);
     document.querySelector("#resetFormBtn").addEventListener("click", resetForm);
+    document.querySelector("#sumScoresBtn").addEventListener("click", sumVisibleScoresToTotal);
     document.querySelector("#planLoadRecentBtn").addEventListener("click", () => loadSelectedRecent("#planRecentSelect", "plan"));
     document.querySelector("#salesLoadRecentBtn").addEventListener("click", () => loadSelectedRecent("#salesRecentSelect", "sales"));
     document.querySelector("#planRecentSelect").addEventListener("change", () => loadSelectedRecent("#planRecentSelect", "plan"));
