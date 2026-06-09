@@ -1254,8 +1254,8 @@
                   <p id="gaokaoEstimate">如果高中三年保持同等相对位次，物理类路径大致对应 211 / 双一流冲刺层。</p>
                 </div>
                 <div class="mini-card">
-                  <strong>校准方式</strong>
-                  <p id="rankMethod">正式版建议接入近年一分一段表：地区、年份、选科、分数/位次四项共同校准。</p>
+                  <strong>当地高考考情分析</strong>
+                  <p id="localGaokaoAnalysis">当地新高考更看高中三年的校内排名、选科组合和学科承接。暑假先把影响高一开局的科目稳定下来，后续再根据月考排名校准目标层次。</p>
                 </div>
               </div>
             </section>
@@ -2010,8 +2010,28 @@
         rankText: `${data.city || cityMeta.name}约 ${cityMeta.cohort.toLocaleString("zh-CN")} 名中考生，当前总分约处于市排${percentText}，约第 ${rank.toLocaleString("zh-CN")} 名附近。`,
         estimate: advice,
         method: `${rankEstimate.method} ${rankEstimate.basis} 这个结果用于家长沟通中的层次判断，不等同于正式录取位次。`,
+        localAnalysis: getLocalGaokaoAnalysis(data, stats, level, percentText),
         tag: `参考：市排${percentText}`
       };
+    }
+
+    function getLocalGaokaoAnalysis(data, stats, level, percentText) {
+      const rule = getProvinceRule(data);
+      const selection = getSelection(data, stats);
+      const isHistory = selection.first === "历史";
+      const focus = isHistory ? "语文、英语和材料分析能力" : "数学、物理和化学承接能力";
+      const target = level.includes("985") || level.includes("211")
+        ? "要尽量保持校内头部或前列排名"
+        : level.includes("一本")
+          ? "要先稳住一本线附近的校内竞争位置"
+          : "要先把高中入口基础和稳定性补起来";
+      if (provinceModes["3+3"].includes(data.province)) {
+        return `${data.province}${data.city}属于 3+3 新高考地区，高中选科会直接影响院校专业组和专业选择面。当前按市排${percentText}做层次参考，后续${target}。暑假重点看${focus}，不要只按中考总分判断高中能否延续优势。`;
+      }
+      if (provinceModes["3+1+2"].includes(data.province)) {
+        return `${data.province}${data.city}属于 3+1+2 新高考地区，首选物理/历史会影响专业池，再选科会影响组合竞争力。当前按市排${percentText}做层次参考，后续${target}。暑假重点看${focus}，开学后用月考排名再校准目标。`;
+      }
+      return `${data.province}${data.city}高考政策需按当地最新口径确认，但高中阶段一定会从中考总分转向校内排名、选科组合和学科承接。当前按市排${percentText}做层次参考，暑假先稳住${focus}，开学后再结合月考排名调整目标。`;
     }
 
     function getLevelExplanation(projection, plan) {
@@ -2487,7 +2507,7 @@
       $("#rankTag").textContent = projection.tag;
       $("#rankEstimate").textContent = projection.rankText;
       $("#gaokaoEstimate").textContent = projection.estimate;
-      $("#rankMethod").textContent = projection.method;
+      $("#localGaokaoAnalysis").textContent = projection.localAnalysis;
 
       $("#subjectLabel").textContent = weakNames.length ? `${weakNames.join("、")}需暑假衔接` : "高中科目整体稳定";
       $("#subjectList").innerHTML = onlyTotal ? `
