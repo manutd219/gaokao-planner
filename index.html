@@ -1629,6 +1629,11 @@
       return cities.find((city) => city.name === data.city) || cities[0];
     }
 
+    function getPlaceName(data, separator = "") {
+      if (!data.city || data.city === data.province) return data.province || "";
+      return `${data.province || ""}${separator}${data.city}`;
+    }
+
     const rankScoreAnchors = {
       "广东-深圳": {
         max: 610,
@@ -1654,6 +1659,8 @@
       default: { source: "其他地区暂按通用分数率锚点估算，可继续补充当地一分一段表、录取线和人数后校准。", anchors: [[0.92, 0.04], [0.86, 0.12], [0.80, 0.26], [0.73, 0.45], [0.66, 0.64], [0.56, 0.84]] }
     };
 
+    const gaokaoReference2025 = {"广东":{"physics":{"rankScores":{"1000":670,"5000":644,"10000":629,"30000":596,"50000":575,"100000":537},"undergraduate":{"score":436,"rank":276586,"batch":"本科批"},"special":{"score":534,"rank":106293,"batch":"特殊类型招生控制线"}},"history":{"rankScores":{"1000":631,"5000":601,"10000":583,"30000":540,"50000":510,"100000":455},"undergraduate":{"score":464,"rank":91654,"batch":"本科批"},"special":{"score":557,"rank":20815,"batch":"特殊类型招生控制线"}}},"四川":{"physics":{"rankScores":{"1000":667,"5000":642,"10000":627,"30000":590,"50000":565,"100000":520},"undergraduate":{"score":438,"rank":207063,"batch":"本科批"},"special":{"score":518,"rank":103351,"batch":"特殊类型招生控制线"}},"history":{"rankScores":{"1000":630,"5000":597,"10000":577,"30000":529,"50000":496,"100000":423},"undergraduate":{"score":467,"rank":70656,"batch":"本科批"},"special":{"score":533,"rank":28339,"batch":"特殊类型招生控制线"}}},"浙江":{"comprehensive":{"rankScores":{"1000":684,"5000":665,"10000":652,"30000":622,"50000":602,"100000":560},"undergraduate":{"score":490,"rank":184372,"batch":"普通类一段"},"special":{"score":592,"rank":61619,"batch":"特殊类型招生控制线"}}},"北京":{"comprehensive":{"undergraduate":{"score":430,"rank":53994,"batch":"本科批"},"special":{"score":519,"rank":32440,"batch":"特殊类型招生控制线"}}},"上海":{"comprehensive":{"undergraduate":{"score":402,"rank":49276,"batch":"本科批"},"special":{"score":505,"rank":22797,"batch":"特殊类型招生控制线"}}},"河北":{"physics":{"rankScores":{"1000":666,"5000":642,"10000":628,"30000":596,"50000":575,"100000":536},"undergraduate":{"score":459,"rank":224230,"batch":"本科批"},"special":{"score":499,"rank":162246,"batch":"特殊类型招生控制线"}},"history":{"rankScores":{"1000":637,"5000":604,"10000":584,"30000":534,"50000":499,"100000":427},"undergraduate":{"score":477,"rank":64897,"batch":"本科批"},"special":{"score":527,"rank":33954,"batch":"特殊类型招生控制线"}}},"江苏":{"physics":{"rankScores":{"1000":667,"5000":647,"10000":635,"30000":605,"50000":584,"100000":544},"undergraduate":{"score":463,"rank":205975,"batch":"本科批"},"special":{"score":519,"rank":136395,"batch":"特殊类型招生控制线"}},"history":{"rankScores":{"1000":633,"5000":603,"10000":584,"30000":536,"50000":495},"undergraduate":{"score":482,"rank":56398,"batch":"本科批"},"special":{"score":537,"rank":29839,"batch":"特殊类型招生控制线"}}},"山东":{"comprehensive":{"rankScores":{"1000":668,"5000":643,"10000":627,"30000":593,"50000":573,"100000":540},"undergraduate":{"score":441,"rank":333469,"batch":"普通类一段"},"special":{"score":521,"rank":138878,"batch":"特殊类型招生控制线"}}},"河南":{"physics":{"rankScores":{"1000":681,"5000":659,"10000":645,"30000":615,"50000":596,"100000":560},"undergraduate":{"score":427,"rank":348358,"batch":"本科批"},"special":{"score":535,"rank":143976,"batch":"特殊类型招生控制线"}},"history":{"rankScores":{"1000":637,"5000":605,"10000":586,"30000":544,"50000":515,"100000":461},"undergraduate":{"score":471,"rank":90174,"batch":"本科批"},"special":{"score":552,"rank":25337,"batch":"特殊类型招生控制线"}}},"湖北":{"physics":{"rankScores":{"1000":658,"5000":629,"10000":611,"30000":570,"50000":542,"100000":484},"undergraduate":{"score":426,"rank":148657,"batch":"本科批"},"special":{"score":516,"rank":72834,"batch":"特殊类型招生控制线"}},"history":{"rankScores":{"1000":624,"5000":588,"10000":564,"30000":496,"50000":444,"100000":338},"undergraduate":{"score":442,"rank":50955,"batch":"本科批"},"special":{"score":536,"rank":17551,"batch":"特殊类型招生控制线"}}},"湖南":{"physics":{"rankScores":{"1000":662,"5000":633,"10000":615,"30000":572,"50000":543,"100000":491},"undergraduate":{"score":405,"rank":211431,"batch":"本科批"},"special":{"score":476,"rank":119396,"batch":"特殊类型招生控制线"}},"history":{"rankScores":{"1000":617,"5000":579,"10000":553,"30000":493,"50000":451,"100000":360},"undergraduate":{"score":446,"rank":53081,"batch":"本科批"},"special":{"score":503,"rank":25780,"batch":"特殊类型招生控制线"}}},"安徽":{"physics":{"rankScores":{"1000":669,"5000":646,"10000":631,"30000":595,"50000":570,"100000":525},"undergraduate":{"score":461,"rank":191416,"batch":"本科批"},"special":{"score":514,"rank":114928,"batch":"特殊类型招生控制线"}},"history":{"rankScores":{"1000":625,"5000":589,"10000":564,"30000":507,"50000":466,"100000":370},"undergraduate":{"score":477,"rank":44750,"batch":"本科批"},"special":{"score":515,"rank":26691,"batch":"特殊类型招生控制线"}}},"江西":{"physics":{"rankScores":{"1000":643,"5000":614,"10000":597,"30000":557,"50000":531,"100000":487},"undergraduate":{"score":429,"rank":172066,"batch":"本科批"},"special":{"score":505,"rank":78323,"batch":"特殊类型招生控制线"}},"history":{"rankScores":{"1000":616,"5000":579,"10000":558,"30000":513,"50000":482,"100000":405},"undergraduate":{"score":486,"rank":47572,"batch":"本科批"},"special":{"score":539,"rank":16877,"batch":"特殊类型招生控制线"}}},"广西":{"physics":{"rankScores":{"1000":639,"5000":606,"10000":586,"30000":540,"50000":508,"100000":446},"undergraduate":{"score":370,"rank":175380,"batch":"本科批"},"special":{"score":495,"rank":59559,"batch":"特殊类型招生控制线"}},"history":{"rankScores":{"1000":605,"5000":558,"10000":528,"30000":456,"50000":409,"100000":306},"undergraduate":{"score":402,"rank":53549,"batch":"本科批"},"special":{"score":518,"rank":12323,"batch":"特殊类型招生控制线"}}},"贵州":{"physics":{"rankScores":{"1000":647,"5000":611,"10000":588,"30000":536,"50000":503,"100000":447},"undergraduate":{"score":387,"rank":158061,"batch":"本科批"},"special":{"score":483,"rank":65977,"batch":"特殊类型招生控制线"}},"history":{"rankScores":{"1000":620,"5000":572,"10000":542,"30000":479,"50000":433},"undergraduate":{"score":458,"rank":39331,"batch":"本科批"},"special":{"score":517,"rank":16289,"batch":"特殊类型招生控制线"}}},"山西":{"physics":{"rankScores":{"1000":659,"5000":624,"10000":601,"30000":549,"50000":515,"100000":448}},"history":{"rankScores":{"1000":615,"5000":571,"10000":541,"30000":465,"50000":379}}},"内蒙古":{"physics":{"rankScores":{"1000":653,"5000":609,"10000":578,"30000":499,"50000":434}},"history":{"rankScores":{"1000":614,"5000":548,"10000":499,"30000":318}}},"云南":{"physics":{"rankScores":{"1000":648,"5000":618,"10000":599,"30000":552,"50000":518,"100000":450}},"history":{"rankScores":{"1000":615,"5000":578,"10000":553,"30000":493,"50000":448,"100000":337}}},"陕西":{"physics":{"rankScores":{"1000":669,"5000":631,"10000":605,"30000":545,"50000":508,"100000":437}},"history":{"rankScores":{"1000":622,"5000":568,"10000":534,"30000":454,"50000":388}}}};
+
     function interpolateAnchors(value, anchors) {
       const sorted = [...anchors].sort((a, b) => b[0] - a[0]);
       if (value >= sorted[0][0]) return sorted[0][1];
@@ -1673,6 +1680,75 @@
       if (percentile <= 0.01) return "前 1%";
       if (percentile < 0.1) return `前 ${Math.round(percentile * 1000) / 10}%`;
       return `前 ${Math.round(percentile * 100)}%`;
+    }
+
+    function formatGaokaoRank(rank) {
+      if (!rank) return "";
+      if (rank >= 10000) return `约 ${(rank / 10000).toFixed(rank >= 100000 ? 1 : 2).replace(/\.0$/, "")} 万位`;
+      return `约 ${rank.toLocaleString("zh-CN")} 位`;
+    }
+
+    function getGaokaoCategoryKey(data, stats) {
+      if (provinceModes["3+3"].includes(data.province)) return "comprehensive";
+      return getSelection(data, stats).first === "历史" ? "history" : "physics";
+    }
+
+    function getGaokaoReferenceBundle(data, stats) {
+      const provinceRef = gaokaoReference2025[data.province];
+      if (!provinceRef) return null;
+      const preferred = getGaokaoCategoryKey(data, stats);
+      const categoryKey = provinceRef[preferred]
+        ? preferred
+        : provinceRef.comprehensive
+          ? "comprehensive"
+          : provinceRef.physics
+            ? "physics"
+            : "history";
+      const labelMap = { physics: "物理类", history: "历史类", comprehensive: "综合类" };
+      return { categoryKey, categoryLabel: labelMap[categoryKey], ref: provinceRef[categoryKey] };
+    }
+
+    function getRankScoreText(ref) {
+      if (!ref?.rankScores) return "";
+      const entries = [
+        ["30000", "省排 3 万"],
+        ["50000", "省排 5 万"],
+        ["100000", "省排 10 万"]
+      ].filter(([rank]) => ref.rankScores[rank]);
+      if (!entries.length) return "";
+      return entries.map(([rank, label]) => `${label}约 ${ref.rankScores[rank]} 分`).join("，");
+    }
+
+    function getGaokaoReferenceText(data, bundle) {
+      if (!bundle?.ref) return "";
+      const { ref, categoryLabel } = bundle;
+      const parts = [];
+      if (ref.undergraduate) {
+        parts.push(`${ref.undergraduate.batch} ${ref.undergraduate.score} 分/${formatGaokaoRank(ref.undergraduate.rank)}`);
+      }
+      if (ref.special) {
+        parts.push(`${ref.special.batch} ${ref.special.score} 分/${formatGaokaoRank(ref.special.rank)}`);
+      }
+      const rankText = getRankScoreText(ref);
+      const base = parts.length
+        ? `参考 2025 年${data.province}${categoryLabel}，${parts.join("，")}。`
+        : `参考 2025 年${data.province}${categoryLabel}一分一段数据。`;
+      return rankText ? `${base}${rankText}。` : base;
+    }
+
+    function getGaokaoTargetBenchmark(level, bundle) {
+      if (!bundle?.ref) return "";
+      const { ref, categoryLabel } = bundle;
+      if ((level.includes("985") || level.includes("211")) && ref.rankScores?.["30000"]) {
+        return `从 2025 年${categoryLabel}一分一段看，省排 3 万约 ${ref.rankScores["30000"]} 分；这个层次后续要靠高中校内排名持续验证。`;
+      }
+      if (level.includes("一本") && ref.special) {
+        return `2025 年${categoryLabel}${ref.special.batch}为 ${ref.special.score} 分，对应${formatGaokaoRank(ref.special.rank)}，可作为一本/优质本科目标的公开参考。`;
+      }
+      if (ref.undergraduate) {
+        return `2025 年${categoryLabel}${ref.undergraduate.batch}为 ${ref.undergraduate.score} 分，对应${formatGaokaoRank(ref.undergraduate.rank)}，目前先按本科入口目标做底线规划。`;
+      }
+      return "";
     }
 
     function estimateRankPercentile(data, total, totalMax) {
@@ -2000,7 +2076,8 @@
       const estimatedPercentile = rankEstimate.percentile;
       const rank = Math.max(1, Math.round(cityMeta.cohort * estimatedPercentile));
       const percentText = formatPercentile(estimatedPercentile);
-      const selectionClass = getSelection(data, stats).first === "历史" ? "历史类" : "物理/综合类";
+      const gaokaoBundle = getGaokaoReferenceBundle(data, stats);
+      const selectionClass = gaokaoBundle?.categoryLabel || (getSelection(data, stats).first === "历史" ? "历史类" : "物理/综合类");
 
       let level = "本科";
       let advice = "当前更适合先稳住高中入口成绩，目标放在本科线以上，再通过高一排名变化上调预期。";
@@ -2017,19 +2094,20 @@
         level = "一本 / 公办本科";
         advice = `如果高中三年保持${percentText}相对位次，目标应先放在一本线或优质公办本科。`;
       }
+      const benchmark = getGaokaoTargetBenchmark(level, gaokaoBundle);
 
       return {
         level,
         percentText,
         rankText: `${data.city || cityMeta.name}约 ${cityMeta.cohort.toLocaleString("zh-CN")} 名中考生，当前总分约处于市排${percentText}，约第 ${rank.toLocaleString("zh-CN")} 名附近。`,
-        estimate: advice,
+        estimate: benchmark ? `${advice} ${benchmark}` : advice,
         method: `${rankEstimate.method} ${rankEstimate.basis} 这个结果用于家长沟通中的层次判断，不等同于正式录取位次。`,
-        localAnalysis: getLocalGaokaoAnalysis(data, stats, level, percentText),
+        localAnalysis: getLocalGaokaoAnalysis(data, stats, level, percentText, gaokaoBundle),
         tag: `参考：市排${percentText}`
       };
     }
 
-    function getLocalGaokaoAnalysis(data, stats, level, percentText) {
+    function getLocalGaokaoAnalysis(data, stats, level, percentText, gaokaoBundle) {
       const rule = getProvinceRule(data);
       const selection = getSelection(data, stats);
       const isHistory = selection.first === "历史";
@@ -2039,13 +2117,16 @@
         : level.includes("一本")
           ? "要先稳住一本线附近的校内竞争位置"
           : "要先把高中入口基础和稳定性补起来";
+      const referenceText = getGaokaoReferenceText(data, gaokaoBundle);
+      const suffix = referenceText ? ` ${referenceText}以上只做高中目标层次参考，真正目标要在高一月考、期中和校内排名中继续校准。` : "";
+      const placeName = getPlaceName(data);
       if (provinceModes["3+3"].includes(data.province)) {
-        return `${data.province}${data.city}属于 3+3 新高考地区，高中选科会直接影响院校专业组和专业选择面。当前按市排${percentText}做层次参考，后续${target}。暑假重点看${focus}，不要只按中考总分判断高中能否延续优势。`;
+        return `${placeName}属于 3+3 新高考地区，高中选科会直接影响院校专业组和专业选择面。当前按市排${percentText}做层次参考，后续${target}。暑假重点看${focus}，不要只按中考总分判断高中能否延续优势。${suffix}`;
       }
       if (provinceModes["3+1+2"].includes(data.province)) {
-        return `${data.province}${data.city}属于 3+1+2 新高考地区，首选物理/历史会影响专业池，再选科会影响组合竞争力。当前按市排${percentText}做层次参考，后续${target}。暑假重点看${focus}，开学后用月考排名再校准目标。`;
+        return `${placeName}属于 3+1+2 新高考地区，首选物理/历史会影响专业池，再选科会影响组合竞争力。当前按市排${percentText}做层次参考，后续${target}。暑假重点看${focus}，开学后用月考排名再校准目标。${suffix}`;
       }
-      return `${data.province}${data.city}高考政策需按当地最新口径确认，但高中阶段一定会从中考总分转向校内排名、选科组合和学科承接。当前按市排${percentText}做层次参考，暑假先稳住${focus}，开学后再结合月考排名调整目标。`;
+      return `${placeName}高考政策需按当地最新口径确认，但高中阶段一定会从中考总分转向校内排名、选科组合和学科承接。当前按市排${percentText}做层次参考，暑假先稳住${focus}，开学后再结合月考排名调整目标。${suffix}`;
     }
 
     function getLevelExplanation(projection, plan) {
@@ -2502,7 +2583,7 @@
       const strongNames = highSubjectStats.filter((s) => s.ratio !== null && s.ratio >= 88).map((s) => s.name).slice(0, 3);
       const onlyTotal = !stats.some((s) => s.hasScore);
 
-      $("#reportLocation").textContent = `${data.province} ${data.city} · ${rule.location}`;
+      $("#reportLocation").textContent = `${getPlaceName(data, " ")} · ${rule.location}`;
       $("#reportTitle").textContent = `${data.name || "学生"}初升高选科与暑假规划`;
       $("#reportSummary").textContent = `${profileConfig.note}。中考之后选科才是关键，暑假是从初中“记忆+模仿”切换到高中“推理+构建”的窗口。`;
       const fitExplain = getFitExplanation(fit);
