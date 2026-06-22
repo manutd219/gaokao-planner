@@ -1,0 +1,252 @@
+.call-panel {
+  padding: 0 2px 36px;
+}
+
+.call-toolbar,
+.call-status-grid,
+.call-layout,
+.call-grid-2,
+.call-score-grid,
+.call-analysis-grid,
+.sales-user-summary-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.call-toolbar {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  margin-bottom: 16px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  background: #fff;
+}
+
+.call-toolbar label {
+  margin: 0;
+  color: #344054;
+}
+
+.call-toolbar select,
+.call-card input,
+.call-card select,
+.call-card textarea {
+  color: var(--ink);
+  border-color: #cbd5e1;
+  background: #fff;
+}
+
+.call-status-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 16px;
+}
+
+.call-status-card {
+  min-height: 118px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  background: #fff;
+}
+
+.call-status-card strong {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 13px;
+  color: var(--blue);
+}
+
+.call-status-card p {
+  color: #344054;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.call-layout {
+  grid-template-columns: minmax(320px, 0.82fr) minmax(480px, 1.18fr);
+  align-items: start;
+}
+
+.call-column {
+  display: grid;
+  gap: 14px;
+}
+
+.call-card {
+  padding: 20px;
+  border: 1px solid var(--line);
+  background: #fff;
+}
+
+.call-card h2 {
+  margin-bottom: 16px;
+  font-size: 18px;
+}
+
+.call-card h3 {
+  margin: 16px 0 9px;
+  font-size: 14px;
+  color: #344054;
+}
+
+.call-card label {
+  color: #475467;
+}
+
+.call-grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.call-score-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.call-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.call-chip {
+  min-height: 34px;
+  padding: 7px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  color: #475467;
+  background: #f8fafc;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.call-chip.selected {
+  color: #fff;
+  border-color: var(--blue);
+  background: var(--blue);
+}
+
+.call-advice,
+.call-report-box,
+.sales-user-summary {
+  padding: 16px;
+  border: 1px solid #d6deeb;
+  background: #f8fafc;
+}
+
+.call-advice strong,
+.sales-user-summary h3 {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--ink);
+}
+
+.call-advice p,
+.call-report-box,
+.sales-user-summary p {
+  white-space: pre-line;
+  color: #475467;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.call-analysis-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.call-analysis-section {
+  padding: 16px;
+  border-left: 4px solid var(--blue);
+  background: #f8fafc;
+}
+
+.call-analysis-section h3 {
+  margin: 0 0 8px;
+  color: var(--ink);
+}
+
+.call-analysis-section p {
+  color: #475467;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.call-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.call-actions .btn {
+  min-width: 142px;
+}
+
+.call-actions .generate-plan {
+  color: var(--ink);
+  border-color: var(--gold);
+  background: var(--gold);
+}
+
+.call-message {
+  min-height: 22px;
+  margin-top: 10px;
+  color: var(--muted);
+  text-align: right;
+  font-size: 13px;
+}
+
+.sales-user-summary {
+  margin: 14px 0 18px;
+  background: #eef4ff;
+}
+
+.sales-user-summary-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.sales-user-summary-grid div {
+  padding-right: 14px;
+  border-right: 1px solid #cbd8ee;
+}
+
+.sales-user-summary-grid div:last-child {
+  border-right: 0;
+}
+
+.sales-user-summary-grid strong {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--blue);
+  font-size: 12px;
+}
+
+@media (max-width: 1180px) {
+  .call-status-grid,
+  .call-score-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .call-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .call-toolbar,
+  .call-status-grid,
+  .call-grid-2,
+  .call-score-grid,
+  .call-analysis-grid,
+  .sales-user-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .call-actions .btn {
+    width: 100%;
+  }
+
+  .sales-user-summary-grid div {
+    padding: 0 0 10px;
+    border-right: 0;
+    border-bottom: 1px solid #cbd8ee;
+  }
+}

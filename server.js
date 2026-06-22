@@ -6,6 +6,7 @@ const { randomUUID } = require("crypto");
 const ROOT = __dirname;
 const DATA_DIR = process.env.DATA_DIR || path.join(ROOT, "data");
 const RECORDS_FILE = process.env.RECORDS_FILE || path.join(DATA_DIR, "records.json");
+const CALLS_FILE = process.env.CALLS_FILE || path.join(DATA_DIR, "calls.json");
 const PORT = Number(process.env.PORT || 4173);
 const SESSION_TTL_MS = Number(process.env.SESSION_TTL_HOURS || 24) * 60 * 60 * 1000;
 const NODE_ENV = process.env.NODE_ENV || "development";
@@ -110,18 +111,18 @@ async function readBody(req) {
   }
 }
 
-async function ensureRecordsFile() {
-  await fs.mkdir(path.dirname(RECORDS_FILE), { recursive: true });
+async function ensureJsonFile(filePath) {
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
   try {
-    await fs.access(RECORDS_FILE);
+    await fs.access(filePath);
   } catch {
-    await fs.writeFile(RECORDS_FILE, "[]\n", "utf8");
+    await fs.writeFile(filePath, "[]\n", "utf8");
   }
 }
 
-async function readRecords() {
-  await ensureRecordsFile();
-  const raw = await fs.readFile(RECORDS_FILE, "utf8");
+async function readJsonArray(filePath) {
+  await ensureJsonFile(filePath);
+  const raw = await fs.readFile(filePath, "utf8");
   try {
     const records = JSON.parse(raw);
     return Array.isArray(records) ? records : [];
@@ -130,9 +131,25 @@ async function readRecords() {
   }
 }
 
+async function writeJsonArray(filePath, records) {
+  await ensureJsonFile(filePath);
+  await fs.writeFile(filePath, `${JSON.stringify(records, null, 2)}\n`, "utf8");
+}
+
+async function readRecords() {
+  return readJsonArray(RECORDS_FILE);
+}
+
 async function writeRecords(records) {
-  await ensureRecordsFile();
-  await fs.writeFile(RECORDS_FILE, `${JSON.stringify(records, null, 2)}\n`, "utf8");
+  return writeJsonArray(RECORDS_FILE, records);
+}
+
+async function readCallRecords() {
+  return readJsonArray(CALLS_FILE);
+}
+
+async function writeCallRecords(records) {
+  return writeJsonArray(CALLS_FILE, records);
 }
 
 function publicUser(user) {
@@ -174,6 +191,8 @@ function sanitizeRecord(body, user) {
   const analysis = body.analysis && typeof body.analysis === "object" ? body.analysis : {};
   const subjects = Array.isArray(body.subjects) ? body.subjects : [];
   const salesTalk = Array.isArray(body.salesTalk) ? body.salesTalk : [];
+  const callContext = body.callContext && typeof body.callContext === "object" ? body.callContext : null;
+  const sourceCallId = typeof body.sourceCallId === "string" ? body.sourceCallId : "";
   const status = statuses.includes(body.status) ? body.status : "未跟进";
 
   return {
@@ -185,7 +204,24 @@ function sanitizeRecord(body, user) {
     form,
     analysis,
     subjects,
-    salesTalk
+    salesTalk,
+    callContext,
+    sourceCallId
+  };
+}
+
+function sanitizeCallRecord(body, user) {
+  const call = body.call && typeof body.call === "object" ? body.call : {};
+  const analysis = body.analysis && typeof body.analysis === "object" ? body.analysis : {};
+  const status = statuses.includes(body.status) ? body.status : "未跟进";
+  return {
+    id: randomUUID(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    owner: publicUser(user),
+    status,
+    call,
+    analysis
   };
 }
 
@@ -280,6 +316,27 @@ async function handleApi(req, res, url) {
     const user = requireUser(req, res);
     if (!user) return;
     sendJson(res, 200, { user: publicUser(user) });
+    return;
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/calls") {
+    const user = requireUser(req, res);
+    if (!user) return;
+    const records = visibleRecords(await readCallRecords(), user)
+      .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+    sendJson(res, 200, { records });
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/calls") {
+    const user = requireUser(req, res);
+    if (!user) return;
+    const body = await readBody(req);
+    const record = sanitizeCallRecord(body, user);
+    const records = await readCallRecords();
+    records.push(record);
+    await writeCallRecords(records);
+    sendJson(res, 201, { record });
     return;
   }
 

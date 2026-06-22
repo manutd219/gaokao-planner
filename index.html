@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>初升高选科与暑假规划 Demo</title>
   <script src="vendor/html2canvas.min.js"></script>
+  <link rel="stylesheet" href="call-panel.css?v=20260622b" />
   <style>
     :root {
       --ink: #0f172a;
@@ -1017,6 +1018,7 @@
       <nav class="nav-menu" aria-label="系统导航">
         <button class="nav-button active" type="button" data-view="query">查询页</button>
         <button class="nav-button" type="button" data-view="lookup">用户查询</button>
+        <button class="nav-button" type="button" data-view="call">销售外呼面板</button>
         <button class="nav-button" type="button" data-view="plan">用户规划</button>
         <button class="nav-button" type="button" data-view="sales">销售建议</button>
         <button class="nav-button" type="button" data-view="backend" id="backendNav" hidden>后台数据</button>
@@ -1153,6 +1155,101 @@
             <button class="btn btn-primary" id="loadLookupBtn" type="button">调出最近记录</button>
           </div>
           <div id="lookupResult" class="lookup-result">暂无查询，请输入学生姓名。</div>
+        </div>
+      </section>
+
+      <section class="call-panel view-panel" id="callView">
+        <div class="call-toolbar">
+          <label>最近10次外呼记录
+            <select id="callRecentSelect"><option value="">暂无外呼记录</option></select>
+          </label>
+          <button class="btn btn-secondary" id="callLoadRecentBtn" type="button">调出记录</button>
+        </div>
+
+        <div class="call-status-grid">
+          <div class="call-status-card"><strong>当前判断</strong><p id="callCurrentJudgment">先填写学生地区和沟通信息。</p></div>
+          <div class="call-status-card"><strong>销售下一句</strong><p id="callNextLine">先确认孩子现在处于什么阶段，以及家长最担心哪件事。</p></div>
+          <div class="call-status-card"><strong>主讲承接</strong><p id="callTeacherLine">信息补齐后自动判断建议主讲。</p></div>
+          <div class="call-status-card"><strong>还缺信息</strong><p id="callMissing">学生姓名、地区、成绩或家长原话。</p></div>
+        </div>
+
+        <div class="call-layout">
+          <div class="call-column">
+            <section class="call-card">
+              <h2>1. 基础信息</h2>
+              <div class="call-grid-2">
+                <label>学生姓名<input id="callStudentName" placeholder="如：张同学 / 小名" /></label>
+                <label>学生性别<select id="callGender"><option value="">未知</option><option>男</option><option>女</option></select></label>
+              </div>
+              <label>省份 / 高考地区<select id="callProvince"><option value="">请选择省份</option></select></label>
+              <div class="call-grid-2">
+                <label>城市<select id="callCity"><option value="">请先选省份</option></select></label>
+                <label>区县<input id="callDistrict" placeholder="选填" /></label>
+              </div>
+              <div class="call-grid-2">
+                <label>孩子阶段<select id="callStage"><option value="">未确认</option><option>中考前</option><option>已中考完</option><option>等成绩</option><option>已确定高中</option><option>复读/补习</option><option>路径不确定</option></select></label>
+                <label>沟通对象<select id="callDecision"><option value="">未确认</option><option>爸爸</option><option>妈妈</option><option>外婆/爷爷奶奶</option><option>孩子本人</option><option>父母共同决策</option></select></label>
+              </div>
+              <label>升学路径<select id="callPathway"><option value="">未确认</option><option>重点/优质高中</option><option>普通高中</option><option>私立高中</option><option>复读后冲普高</option><option>职高/中职方向</option><option>还要等结果</option></select></label>
+              <label>学校 / 目标高中<input id="callSchool" placeholder="如：本地普高、重点班、暂不确定" /></label>
+              <div class="call-grid-2">
+                <label>新高考政策了解<select id="callPolicyAwareness"><option value="">未确认</option><option>不了解</option><option>听说过，但不清楚</option><option>基本了解</option><option>比较了解</option></select></label>
+                <label>选科与专业了解<select id="callMajorAwareness"><option value="">未确认</option><option>不了解</option><option>有大致概念</option><option>了解部分专业要求</option><option>已结合目标专业考虑</option></select></label>
+              </div>
+            </section>
+
+            <section class="call-card">
+              <h2>2. 分数记录</h2>
+              <div class="call-score-grid">
+                <label>总分<input id="callScoreTotal" type="number" /></label>
+                <label>语文<input id="callScoreChinese" type="number" /></label>
+                <label>数学<input id="callScoreMath" type="number" /></label>
+                <label>英语<input id="callScoreEnglish" type="number" /></label>
+                <label>物理<input id="callScorePhysics" type="number" /></label>
+                <label>化学<input id="callScoreChemistry" type="number" /></label>
+                <label>历史<input id="callScoreHistory" type="number" /></label>
+                <label>省排 / 位次<input id="callRank" type="number" /></label>
+              </div>
+              <label>分数备注<textarea id="callScoreNote" placeholder="例：英语三四十分，数学一百左右；物理喜欢但成绩不清楚。"></textarea></label>
+            </section>
+
+            <section class="call-card">
+              <h2>3. 销售记录</h2>
+              <label>家长原话 / 关键句<textarea id="callQuotes" placeholder="尽量记录家长原话。"></textarea></label>
+              <label>销售备注<textarea id="callNotes" placeholder="家庭情况、暑假安排、竞品信息等。"></textarea></label>
+            </section>
+          </div>
+
+          <div class="call-column">
+            <section class="call-card">
+              <h2>4. 边聊边打标签</h2>
+              <h3>领课原因</h3><div class="call-chips" data-call-group="reason"><button class="call-chip" type="button">先看看</button><button class="call-chip" type="button">看课程安排</button><button class="call-chip" type="button">担心高一跟不上</button><button class="call-chip" type="button">担心某一科</button><button class="call-chip" type="button">老师推荐/链接购买</button><button class="call-chip" type="button">随手领</button><button class="call-chip" type="button">误以为中考课</button></div>
+              <h3>家长关注点</h3><div class="call-chips" data-call-group="concern"><button class="call-chip" type="button">安排型：时间/回放/怎么上</button><button class="call-chip" type="button">效果型：提分/成绩/值不值</button><button class="call-chip" type="button">状态型：孩子不学/不听</button><button class="call-chip" type="button">规划型：选科/大学/专业</button><button class="call-chip" type="button">比较型：已报班/问价格</button><button class="call-chip" type="button">安全型：怕压力大/怕不适应</button></div>
+              <h3>孩子问题标签</h3><div class="call-chips" data-call-group="problems"><button class="call-chip" type="button">英语断层</button><button class="call-chip" type="button">数学薄弱</button><button class="call-chip" type="button">物理薄弱</button><button class="call-chip" type="button">化学薄弱</button><button class="call-chip" type="button">偏科严重</button><button class="call-chip" type="button">审题跳步/粗心</button><button class="call-chip" type="button">步骤不规范</button><button class="call-chip" type="button">不愿学</button><button class="call-chip" type="button">沉迷游戏</button><button class="call-chip" type="button">家长管不动</button><button class="call-chip" type="button">自驱不足</button><button class="call-chip" type="button">家长不在身边</button><button class="call-chip" type="button">想学但听不懂/跟不上</button><button class="call-chip" type="button">态度可以/配合度尚可</button><button class="call-chip" type="button">完成学校任务就行</button><button class="call-chip" type="button">没有目标/动力</button><button class="call-chip" type="button" data-call-exclusive="personality">性格内向</button><button class="call-chip" type="button" data-call-exclusive="personality">性格外向</button></div>
+              <h3>重点学科</h3><div class="call-chips" data-call-group="subjects"><button class="call-chip" type="button">数学</button><button class="call-chip" type="button">物理</button><button class="call-chip" type="button">化学</button><button class="call-chip" type="button">英语</button><button class="call-chip" type="button">数理化</button><button class="call-chip" type="button">物化生/理科方向</button><button class="call-chip" type="button">暂不确定</button></div>
+              <h3>补习经历</h3><div class="call-chips" data-call-group="tutoring"><button class="call-chip" type="button" data-call-exclusive="tutoring">无补习经历</button><button class="call-chip" type="button">线上补习</button><button class="call-chip" type="button">线下补习</button><button class="call-chip" type="button">一对一补习</button><button class="call-chip" type="button">一对多补习</button></div>
+              <h3>过往补习节奏</h3><div class="call-chips" data-call-group="tutoringRhythm"><button class="call-chip" type="button">寒暑假预习</button><button class="call-chip" type="button">每周末查漏补缺</button><button class="call-chip" type="button">长期同步学习</button><button class="call-chip" type="button">考前临时冲刺</button></div>
+              <h3>阻力 / 异议</h3><div class="call-chips" data-call-group="objections"><button class="call-chip" type="button">中考还没结束</button><button class="call-chip" type="button">孩子不配合</button><button class="call-chip" type="button">已报学校班</button><button class="call-chip" type="button">已报机构/一对一</button><button class="call-chip" type="button">先问价格</button><button class="call-chip" type="button">线上效果顾虑</button><button class="call-chip" type="button">家长没时间管</button><button class="call-chip" type="button">孩子不在身边</button></div>
+              <h3>下一步动作</h3><div class="call-chips" data-call-group="next"><button class="call-chip" type="button">发课表/回放</button><button class="call-chip" type="button">发家长会时间</button><button class="call-chip" type="button">家长已同意约主讲</button><button class="call-chip" type="button">家长已同意约孩子沟通</button><button class="call-chip" type="button">家长已同意听体验课</button><button class="call-chip" type="button">暂不强推</button></div>
+            </section>
+
+            <section class="call-card"><h2>5. 省份与学科建议</h2><div id="callProvinceAdvice" class="call-advice"></div><div id="callSubjectAdvice" class="call-advice" style="margin-top:10px"></div></section>
+            <section class="call-card"><h2>6. 主讲沟通预约</h2><div class="call-grid-2"><label>建议主讲<select id="callTeacherSubject"><option value="">自动判断/未确认</option><option>数学主讲</option><option>物理主讲</option><option>化学主讲</option><option>英语主讲</option><option>学习规划老师</option></select></label><label>沟通对象<select id="callTeacherTarget"><option value="">未确认</option><option>家长</option><option>孩子本人</option><option>家长 + 孩子</option><option>父母共同听</option></select></label></div><label>希望主讲重点诊断<textarea id="callTeacherFocus"></textarea></label></section>
+            <section class="call-card"><h2>7. 微信跟进内容</h2><div id="callWechatText" class="call-report-box"></div></section>
+            <section class="call-card"><h2>8. 学情摘要</h2><div id="callReport" class="call-report-box"></div></section>
+            <section class="call-card"><h2>9. 差异化分析报告</h2><div id="callAnalysisReport" class="call-analysis-grid"></div></section>
+
+            <section class="call-card">
+              <div class="call-actions">
+                <button class="btn btn-primary" id="callCopySummaryBtn" type="button">复制学情摘要</button>
+                <button class="btn btn-secondary" id="callCopyWechatBtn" type="button">复制微信跟进内容</button>
+                <button class="btn btn-secondary" id="callSaveBtn" type="button">保存外呼记录</button>
+                <button class="btn btn-secondary" id="callResetBtn" type="button">清空当前记录</button>
+                <button class="btn generate-plan" id="callGeneratePlanBtn" type="button">生成学情规划</button>
+              </div>
+              <p class="call-message" id="callMessage">外呼摘要为内部参考，不建议原样发送给家长。</p>
+            </section>
+          </div>
         </div>
       </section>
 
@@ -1324,6 +1421,10 @@
           <h2>销售沟通建议</h2>
           <span class="pill">内部参考，不进入下载图</span>
         </div>
+        <section class="sales-user-summary" id="salesUserSummary">
+          <h3>用户信息汇总</h3>
+          <div class="sales-user-summary-grid" id="salesUserSummaryGrid"></div>
+        </section>
         <div class="sales-grid" id="salesTalk"></div>
       </section>
 
@@ -1374,10 +1475,25 @@
             </tbody>
           </table>
         </div>
+        <div class="backend-head" style="margin-top:24px;">
+          <div>
+            <h2>后台外呼记录</h2>
+            <p class="status-text">管理员查看销售保存的外呼摘要、关注点和下一步动作。</p>
+          </div>
+        </div>
+        <div class="records-table-wrap">
+          <table class="records-table">
+            <thead>
+              <tr><th>保存时间</th><th>销售</th><th>学生</th><th>地区</th><th>阶段</th><th>家长关注</th><th>孩子问题</th><th>下一步</th></tr>
+            </thead>
+            <tbody id="callRecordsBody"><tr><td colspan="8">暂无外呼记录。</td></tr></tbody>
+          </table>
+        </div>
       </section>
     </section>
   </main>
 
+  <script src="call-panel.js?v=20260622b"></script>
   <script>
     const form = document.querySelector("#studentForm");
     const scoreFields = document.querySelector("#scoreFields");
@@ -1385,6 +1501,7 @@
     const viewMeta = {
       query: ["查询页", "填写学生中考成绩、地区和补充信息，点击查询规划。"],
       lookup: ["用户查询", "输入学生姓名，快速调出当前账号最近一次查询记录。"],
+      call: ["销售外呼面板", "边沟通边记录，形成差异化学情判断并直接生成规划。"],
       plan: ["用户规划", "给家长看的规划图，可下载为图片转发。"],
       sales: ["销售建议", "内部沟通参考，帮助销售判断怎么开场、怎么说明紧迫性。"],
       backend: ["后台数据", "管理员查看所有销售保存的咨询记录。"]
@@ -1392,7 +1509,10 @@
     let authToken = localStorage.getItem("gaokao_planner_token") || "";
     let currentUser = null;
     let allRecords = [];
+    let allCallRecords = [];
     let latestAnalysis = null;
+    let latestCallContext = null;
+    let currentSourceCallId = "";
     let appConfig = {
       demoMode: true,
       loginHint: "测试账号：sales / sales123；管理员：admin / admin123"
@@ -1455,7 +1575,8 @@
       $("#downloadFamilyTop").style.display = view === "plan" ? "block" : "none";
       $("#downloadSalesTop").style.display = view === "sales" ? "block" : "none";
       if (["lookup", "plan", "sales"].includes(view) && currentUser) loadRecords();
-      if (view === "backend") loadRecords();
+      if (view === "call" && currentUser) loadCallRecords();
+      if (view === "backend") Promise.all([loadRecords(), loadCallRecords()]);
     }
 
     function updateAuthUI() {
@@ -1502,7 +1623,7 @@
         currentUser = payload.user;
         updateAuthUI();
         showView("query");
-        await loadRecords();
+        await Promise.all([loadRecords(), loadCallRecords()]);
       } catch {
         authToken = "";
         currentUser = null;
@@ -2176,27 +2297,32 @@
         : stats.reduce((sum, item) => sum + item.score, 0);
       const rule = getProvinceRule(data);
       const insight = extractNotesInsight(data.notes || "");
+      const callContext = latestCallContext;
+      const callProfile = callContext ? callCommunicationProfile(callContext) : null;
       const salesProfile = buildStudentSalesProfile(data, stats, total, scoreProfile.total, profile, projection, plan, insight, rule);
       const parentProfile = getParentCommunicationProfile(data, profile, projection, insight, salesProfile);
       const target = data.school || "目标高中";
-      const noteBridge = insight.summary
+      const noteBridge = callContext
+        ? `外呼记录显示，家长关注“${callContext.concern.join("、") || "尚未明确"}”，孩子问题为“${callContext.problems.join("、") || "尚未明确"}”。${callContext.quotes ? `家长原话：“${callContext.quotes}”` : "下一轮要补记家长原话。"}`
+        : insight.summary
         ? `补充信息里提到：${insight.summary.replace(/[。；;,.，、\\s]+$/g, "")}。这句话要转成判断，不要只复述给家长。`
         : `补充信息暂未填写，先按${data.province}${data.city}的分数层次、学科结构和高考模式做判断。`;
-      const localBridge = `${data.province}${data.city}当前按${rule.mode || rule.location}规划，高中阶段要从中考科目切到高考科目，${rule.risk}`;
+      const policyBridge = callContext ? `家长对新高考政策的了解为“${callContext.policyAwareness || "未确认"}”，选科与专业关系认知为“${callContext.majorAwareness || "未确认"}”。` : "";
+      const localBridge = `${data.province}${data.city}当前按${rule.mode || rule.location}规划，高中阶段要从中考科目切到高考科目，${rule.risk} ${policyBridge}`;
       const weakFocus = salesProfile.focusSubjects.join("、");
       const scoreBridge = salesProfile.onlyTotal
         ? `目前只有总分，先用${total}/${scoreProfile.total}判断层次；下一步必须补做${weakFocus}诊断，否则容易把总分问题误判成某一科问题。`
         : `当前最影响高一开局的是${weakFocus}，其中${salesProfile.evidence}。`;
 
       return [
-        ["家长沟通画像", `${parentProfile.type}。沟通方式：${parentProfile.strategy}\n\n学生判断：${salesProfile.type}，${salesProfile.summary}\n\n${noteBridge}\n\n顾问提醒：第一轮沟通先输出“我看见了孩子的具体风险”，不要直接进入课程介绍。`],
-        ["开场第一句话", `${parentProfile.opening}\n\n可以接一句：“我先按孩子现在的分数层次、${target === "目标高中" ? "目标高中梯度" : `${target}目标`}和${data.province}${data.city}高中学习节奏，帮您判断暑假最该处理哪一件事。”\n\n追问方向：${parentProfile.probe}`],
+        ["家长沟通画像", `${callProfile ? `${callProfile.type}。外呼沟通方式：${callProfile.cue}` : `${parentProfile.type}。沟通方式：${parentProfile.strategy}`}\n\n学生判断：${salesProfile.type}，${salesProfile.summary}\n\n${noteBridge}\n\n顾问提醒：先让家长感到“你理解了这个孩子”，再进入课程和班型。`],
+        ["开场第一句话", `${callContext ? callNextLine(callContext) : parentProfile.opening}\n\n可以接一句：“我先按孩子现在的分数层次、${target === "目标高中" ? "目标高中梯度" : `${target}目标`}和${data.province}${data.city}高中学习节奏，帮您判断暑假最该处理哪一件事。”\n\n追问方向：${callContext?.teacherFocus || parentProfile.probe}`],
         ["为什么要学", `${salesProfile.whyLearn}\n\n落到这个孩子身上：${scoreBridge}\n\n不要泛泛说“初升高很难”，要说清楚孩子会在哪个环节吃亏：听课、作业、第一次月考、选科判断，至少说中两个。`],
         ["当地考情切入", `${localBridge}\n\n对家长的表达可以是：“中考结束不是学习结束，而是评价体系换了。中考看总分和校线，高中更看校内排名、选科组合和高考科目承接。${salesProfile.localRisk}”`],
         ["为什么现在学", `${salesProfile.whyNow}\n\n关键表达：“现在不是多学一轮，而是把开学后最容易暴露的问题提前看见。暑假能集中处理${weakFocus}；开学后再补，就是一边追新课一边补旧方法。”`],
         ["紧迫性怎么讲", `${parentProfile.urgency}\n\n结合学生说：“如果${weakFocus}不开学前先稳定，第一次月考暴露的就不只是分数问题，还会影响孩子对自己能不能适应高中、该不该坚持当前选科方向的判断。”`],
-        ["异议处理", `${parentProfile.objection}\n\n如果家长说“先自己学看看”，不要否定自学，可以接：“可以自己学，但建议至少先做一次诊断，把${weakFocus}里最影响高一听课的部分找出来。初升高最怕的是孩子觉得自己学了很多，开学发现方法不对。”`],
-        ["推进下一步", `${salesProfile.nextStep}\n\n收口建议：“我们今天先不把科目铺太多，只把${weakFocus}锁定下来。先诊断、再排课、再看孩子接受度微调，这样家长决策压力最低，孩子也不会觉得暑假被塞满。”`]
+        ["异议处理", `${callContext?.objections?.length ? `本次明确异议：${callContext.objections.join("、")}。${callProductAdvice(callContext)}` : parentProfile.objection}\n\n如果家长说“先自己学看看”，不要否定自学，可以接：“可以自己学，但建议至少先做一次诊断，把${weakFocus}里最影响高一听课的部分找出来。初升高最怕的是孩子觉得自己学了很多，开学发现方法不对。”`],
+        ["推进下一步", `${callContext?.next?.length ? `本次已约定：${callContext.next.join("、")}。` : salesProfile.nextStep}\n\n收口建议：“我们今天先不把科目铺太多，只把${weakFocus}锁定下来。先诊断、再排课、再看孩子接受度微调，这样家长决策压力最低，孩子也不会觉得暑假被塞满。”`]
       ];
     }
 
@@ -2693,6 +2819,7 @@
         onlyTotal,
         generatedAt: new Date().toISOString()
       };
+      renderSalesUserSummary(data, latestAnalysis, latestCallContext);
     }
 
     function collectRecord() {
@@ -2708,7 +2835,9 @@
         form: data,
         analysis: latestAnalysis,
         subjects: stats.map(({ key, name, score, max, ratio, hasScore }) => ({ key, name, score, max, ratio, hasScore })),
-        salesTalk
+        salesTalk,
+        callContext: latestCallContext,
+        sourceCallId: currentSourceCallId
       };
     }
 
@@ -2803,6 +2932,8 @@
       if (!record) return;
       const formData = record.form || {};
       const subjectValues = getSubjectValueMap(record);
+      latestCallContext = record.callContext || null;
+      currentSourceCallId = record.sourceCallId || "";
       if (formData.province) form.elements.province.value = formData.province;
       updateCityOptions(formData.city);
       renderScoreFields(subjectValues);
@@ -3014,7 +3145,7 @@
         localStorage.setItem("gaokao_planner_token", authToken);
         updateAuthUI();
         showView("query");
-        await loadRecords();
+        await Promise.all([loadRecords(), loadCallRecords()]);
       } catch (error) {
         $("#loginHint").textContent = error.message;
       }
@@ -3027,10 +3158,14 @@
       authToken = "";
       currentUser = null;
       allRecords = [];
+      allCallRecords = [];
+      latestCallContext = null;
+      currentSourceCallId = "";
       localStorage.removeItem("gaokao_planner_token");
       updateAuthUI();
       setBackendMessage("已退出登录。");
       renderRecentSelectors();
+      renderCallRecentSelector();
       renderRecords();
       showView("query");
     });
@@ -3081,6 +3216,7 @@
 
     render();
     initializeLayout();
+    setupCallPanel();
     loadConfig().then(checkSession);
   </script>
 </body>
