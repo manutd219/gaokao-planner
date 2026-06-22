@@ -1,4 +1,4 @@
-.call-panel {
+.call-panel.view-panel {
   width: 100%;
   max-width: none;
   padding: 0;
@@ -11,16 +11,16 @@
 .call-frame {
   display: block;
   width: 100%;
-  height: calc(100dvh - 116px);
-  min-height: 680px;
+  height: calc(100dvh - 62px);
+  min-height: 0;
   border: 0;
   background: #f5f1e8;
 }
 
 @media (max-width: 760px) {
   .call-frame {
-    height: calc(100dvh - 92px);
-    min-height: 720px;
+    height: calc(100dvh - 98px);
+    min-height: 620px;
   }
 }
 

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>初升高选科与暑假规划 Demo</title>
   <script src="vendor/html2canvas.min.js"></script>
-  <link rel="stylesheet" href="call-panel.css?v=20260622c" />
+  <link rel="stylesheet" href="call-panel.css?v=20260622d" />
   <style>
     :root {
       --ink: #0f172a;
@@ -40,8 +40,9 @@
 
     .app {
       min-height: 100dvh;
-      display: grid;
-      grid-template-columns: 260px minmax(0, 1fr);
+      display: block;
+      padding-left: 18px;
+      transition: padding-left 180ms ease;
     }
 
     .login-page {
@@ -101,11 +102,68 @@
     }
 
     .sidebar {
+      position: fixed;
+      inset: 0 auto 0 0;
+      z-index: 100;
+      width: 260px;
       background: var(--ink);
       color: var(--white);
-      padding: 24px;
+      padding: 24px 36px 24px 24px;
       overflow: auto;
       max-height: 100dvh;
+      transform: translateX(calc(-100% + 18px));
+      transition: transform 180ms ease;
+      box-shadow: 14px 0 32px rgba(15, 23, 42, 0.18);
+    }
+
+    .sidebar:hover,
+    body.sidebar-open .sidebar,
+    body.sidebar-pinned .sidebar {
+      transform: translateX(0);
+    }
+
+    .sidebar-reveal {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 18px;
+      height: 100%;
+      padding: 0;
+      border: 0;
+      border-left: 1px solid rgba(255, 255, 255, 0.18);
+      color: var(--ink);
+      background: var(--gold);
+      cursor: pointer;
+      writing-mode: vertical-rl;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    body.sidebar-pinned .sidebar-reveal {
+      display: none;
+    }
+
+    .sidebar-tools {
+      display: flex;
+      margin: -8px 0 14px;
+    }
+
+    .sidebar-pin {
+      width: 100%;
+      min-height: 36px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 6px;
+      color: #dbeafe;
+      background: rgba(255, 255, 255, 0.08);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .sidebar-pin[aria-pressed="true"] {
+      color: var(--ink);
+      border-color: var(--gold);
+      background: var(--gold);
     }
 
     .nav-menu {
@@ -277,6 +335,7 @@
 
     .workspace {
       min-width: 0;
+      min-height: 100dvh;
       padding: 28px;
       overflow: auto;
       max-height: 100dvh;
@@ -346,6 +405,30 @@
 
     .view-panel.active {
       display: block;
+    }
+
+    body[data-view="call"] .workspace {
+      padding: 10px 10px 0;
+    }
+
+    body[data-view="call"] .workspace-header {
+      width: 100%;
+      min-height: 46px;
+      margin-bottom: 6px;
+    }
+
+    body[data-view="call"] .workspace-title h2 {
+      font-size: 19px;
+    }
+
+    body[data-view="call"] .workspace-title p {
+      display: none;
+    }
+
+    @media (min-width: 981px) {
+      body.sidebar-pinned .app {
+        padding-left: 260px;
+      }
     }
 
     .query-panel {
@@ -936,12 +1019,16 @@
 
     @media (max-width: 980px) {
       .app {
-        grid-template-columns: 1fr;
+        padding-left: 18px;
       }
 
-      .sidebar,
+      .sidebar {
+        width: min(280px, calc(100vw - 36px));
+        max-height: 100dvh;
+      }
+
       .workspace {
-        max-height: none;
+        max-height: 100dvh;
       }
 
       .actions {
@@ -1007,12 +1094,17 @@
 
   <main class="app">
     <aside class="sidebar">
+      <button class="sidebar-reveal" id="sidebarRevealBtn" type="button" aria-label="展开侧栏">菜单</button>
       <div class="brand">
         <div>
           <h1>初升高选科与暑假规划</h1>
           <p class="tagline" id="sideUserState">登录后开始规划</p>
         </div>
         <div class="logo">LS</div>
+      </div>
+
+      <div class="sidebar-tools">
+        <button class="sidebar-pin" id="sidebarPinBtn" type="button" aria-pressed="false">锁定侧栏</button>
       </div>
 
       <nav class="nav-menu" aria-label="系统导航">
@@ -1159,7 +1251,7 @@
       </section>
 
       <section class="call-panel view-panel" id="callView">
-        <iframe class="call-frame" id="callFrame" src="外呼记录面板-demo.html?v=20260622c" title="销售外呼面板"></iframe>
+        <iframe class="call-frame" id="callFrame" src="外呼记录面板-demo.html?v=20260622d" title="销售外呼面板"></iframe>
         <div class="call-toolbar">
           <label>最近10次外呼记录
             <select id="callRecentSelect"><option value="">暂无外呼记录</option></select>
@@ -1564,6 +1656,32 @@
       showView("query");
     }
 
+    function setSidebarPinned(pinned) {
+      document.body.classList.toggle("sidebar-pinned", pinned);
+      document.body.classList.remove("sidebar-open");
+      const button = $("#sidebarPinBtn");
+      button.setAttribute("aria-pressed", String(pinned));
+      button.textContent = pinned ? "解除锁定" : "锁定侧栏";
+      localStorage.setItem("gaokao_sidebar_pinned", pinned ? "1" : "0");
+    }
+
+    function setupSidebar() {
+      setSidebarPinned(localStorage.getItem("gaokao_sidebar_pinned") === "1");
+      $("#sidebarRevealBtn").addEventListener("click", () => {
+        if (!document.body.classList.contains("sidebar-pinned")) {
+          document.body.classList.toggle("sidebar-open");
+        }
+      });
+      $("#sidebarPinBtn").addEventListener("click", () => {
+        setSidebarPinned(!document.body.classList.contains("sidebar-pinned"));
+      });
+      $(".workspace").addEventListener("click", () => {
+        if (!document.body.classList.contains("sidebar-pinned")) {
+          document.body.classList.remove("sidebar-open");
+        }
+      });
+    }
+
     function showView(view) {
       if (view === "backend" && currentUser?.role !== "admin") view = "query";
       document.querySelectorAll(".view-panel").forEach((panel) => panel.classList.remove("active"));
@@ -1571,6 +1689,7 @@
       const activePanel = $(`#${view}View`);
       if (activePanel) activePanel.classList.add("active");
       const [title, subtitle] = viewMeta[view] || viewMeta.query;
+      document.body.dataset.view = view;
       $("#viewTitle").textContent = title;
       $("#viewSubtitle").textContent = subtitle;
       $("#downloadFamilyTop").style.display = view === "plan" ? "block" : "none";
@@ -3191,6 +3310,9 @@
       button.addEventListener("click", () => {
         render();
         showView(button.dataset.view);
+        if (!document.body.classList.contains("sidebar-pinned")) {
+          document.body.classList.remove("sidebar-open");
+        }
       });
     });
 
@@ -3216,6 +3338,7 @@
     });
 
     render();
+    setupSidebar();
     initializeLayout();
     setupCallPanel();
     loadConfig().then(checkSession);

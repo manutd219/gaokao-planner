@@ -34,23 +34,12 @@
     font-size:15px;
     line-height:1.58;
   }
-  header{
-    padding:14px 24px 12px;
-    border-bottom:1px solid var(--line);
-    background:rgba(255,253,247,.9);
-    position:sticky;
-    top:0;
-    z-index:5;
-    backdrop-filter:blur(10px);
-  }
-  h1{margin:0;font-size:22px;letter-spacing:0}
-  .sub{margin-top:5px;color:var(--muted);font-size:13px}
   .app{
     display:block;
   }
   .topbar{
     position:sticky;
-    top:68px;
+    top:0;
     z-index:4;
     padding:12px 14px;
     border-bottom:1px solid var(--line);
@@ -76,13 +65,15 @@
   .top-main{font-size:14px;font-weight:700;color:var(--ink);line-height:1.5}
   .main-grid{
     display:grid;
-    grid-template-columns:360px minmax(680px,1fr);
+    grid-template-columns:minmax(320px,360px) minmax(0,1fr);
     gap:14px;
     padding:14px;
     align-items:start;
   }
   @media(max-width:1200px){
     .top-grid{grid-template-columns:1fr 1fr}
+  }
+  @media(max-width:900px){
     .main-grid{grid-template-columns:1fr}
     .sticky{position:static!important}
   }
@@ -100,8 +91,8 @@
   }
   .sticky{
     position:sticky;
-    top:198px;
-    max-height:calc(100vh - 210px);
+    top:130px;
+    max-height:calc(100vh - 144px);
     overflow:auto;
     padding-right:2px;
   }
@@ -230,11 +221,6 @@
 </style>
 </head>
 <body>
-<header>
-  <h1>外呼记录面板 Demo</h1>
-  <div class="sub">本地演示版：省份优先、销售边聊边记录、实时建议、结束后生成给主讲/管理者的标准化学情摘要。</div>
-</header>
-
 <main class="app">
   <section class="topbar">
     <div class="top-grid">
