@@ -322,10 +322,18 @@ function plannerNotesFromCall(state) {
   ].filter(Boolean).join("\n");
 }
 
+function normalizeCallRegion(value, fallback = "") {
+  const normalized = String(value || "")
+    .replace(/壮族自治区$|回族自治区$|维吾尔自治区$|自治区$|省$|市$/u, "");
+  return normalized === "市辖区" ? fallback : normalized;
+}
+
 function mapCallToPlanner(state) {
-  form.elements.province.value = state.province;
-  updateCityOptions(state.city);
-  form.elements.city.value = state.city;
+  const province = normalizeCallRegion(state.province);
+  const city = normalizeCallRegion(state.city, province);
+  form.elements.province.value = province;
+  updateCityOptions(city);
+  form.elements.city.value = city;
   renderScoreFields({});
   form.elements.name.value = state.studentName;
   form.elements.school.value = state.school || "";
@@ -345,6 +353,30 @@ function mapCallToPlanner(state) {
   }
   latestCallContext = state;
   render();
+}
+
+async function saveReplicatedCallRecord(state, analysis) {
+  if (!currentUser) throw new Error("请先登录销售账号");
+  const payload = await apiFetch("/api/calls", {
+    method: "POST",
+    body: JSON.stringify({ status: "未跟进", call: state, analysis })
+  });
+  if (!payload.record) throw new Error("外呼记录保存失败");
+  allCallRecords = [payload.record, ...allCallRecords.filter((record) => record.id !== payload.record.id)];
+  currentSourceCallId = payload.record.id;
+  latestCallContext = state;
+  renderAdminCallRecords();
+  return payload.record;
+}
+
+async function generatePlanFromReplicatedCall(state, analysis) {
+  const record = await saveReplicatedCallRecord(state, analysis);
+  mapCallToPlanner(state);
+  const saved = await saveRecord();
+  if (!saved) throw new Error("规划记录保存失败");
+  showView("plan");
+  setBackendMessage(`已根据${state.studentName}的外呼记录生成学情规划和销售建议。`);
+  return record;
 }
 
 async function generatePlanFromCall() {
@@ -378,6 +410,19 @@ function renderSalesUserSummary(data, analysis, callContext) {
 }
 
 function setupCallPanel() {
+  const frame = document.querySelector("#callFrame");
+  if (frame) {
+    window.addEventListener("message", async (event) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type !== "gaokao-planner:generate-from-call") return;
+      try {
+        await generatePlanFromReplicatedCall(event.data.payload, event.data.analysis || {});
+      } catch (error) {
+        setBackendMessage(error.message);
+      }
+    });
+    return;
+  }
   if (!callNode("Province")) return;
   callNode("Province").innerHTML = `<option value="">请选择省份</option>${Object.keys(cityOptions).map((province) => `<option value="${province}">${province}</option>`).join("")}`;
   callNode("Province").addEventListener("change", () => { populateCallCities(); renderCallPanel(); });

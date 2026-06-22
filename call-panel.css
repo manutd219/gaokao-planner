@@ -1,5 +1,27 @@
 .call-panel {
-  padding: 0 2px 36px;
+  width: 100%;
+  max-width: none;
+  padding: 0;
+}
+
+.call-panel > :not(.call-frame) {
+  display: none !important;
+}
+
+.call-frame {
+  display: block;
+  width: 100%;
+  height: calc(100dvh - 116px);
+  min-height: 680px;
+  border: 0;
+  background: #f5f1e8;
+}
+
+@media (max-width: 760px) {
+  .call-frame {
+    height: calc(100dvh - 92px);
+    min-height: 720px;
+  }
 }
 
 .call-toolbar,
