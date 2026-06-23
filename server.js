@@ -210,14 +210,16 @@ function sanitizeRecord(body, user) {
   };
 }
 
-function sanitizeCallRecord(body, user) {
+function sanitizeCallRecord(body, user, existing = null) {
   const call = body.call && typeof body.call === "object" ? body.call : {};
-  const analysis = body.analysis && typeof body.analysis === "object" ? body.analysis : {};
-  const status = statuses.includes(body.status) ? body.status : "未跟进";
+  const analysis = body.analysis && typeof body.analysis === "object" ? { ...body.analysis } : {};
+  delete analysis.nextLine;
+  const now = new Date().toISOString();
+  const status = existing?.status || (statuses.includes(body.status) ? body.status : "未跟进");
   return {
-    id: randomUUID(),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    id: existing?.id || randomUUID(),
+    createdAt: existing?.createdAt || now,
+    updatedAt: now,
     owner: publicUser(user),
     status,
     call,
@@ -263,6 +265,74 @@ function recordsToCsv(records) {
         analysis.gaokaoLevel || "",
         analysis.summerFocus || "",
         form.notes || "",
+        record.status || ""
+      ];
+    })
+  ];
+  return rows.map((row) => row.map(csvEscape).join(",")).join("\n");
+}
+
+function customerTierLabel(record) {
+  const level = record.analysis?.customerLevel;
+  if (level && typeof level === "object") return String(level.label || "");
+  return String(level || record.analysis?.profile || "");
+}
+
+function customerTierCode(record) {
+  const label = customerTierLabel(record);
+  const matched = label.match(/^[ABCD]/i);
+  return matched ? matched[0].toUpperCase() : "pending";
+}
+
+function trackedSubjects(record) {
+  const saved = record.analysis?.trackedSubjects;
+  if (Array.isArray(saved) && saved.length) return saved;
+  const call = record.call || {};
+  const selected = Array.isArray(call.subjects) ? call.subjects.filter((item) => item && !String(item).includes("暂不确定")) : [];
+  if (selected.length) return selected;
+  const problems = Array.isArray(call.problems) ? call.problems.join(" ") : "";
+  return ["语文", "数学", "英语", "物理", "化学", "历史"]
+    .filter((subject) => problems.includes(subject));
+}
+
+function callsToCsv(records) {
+  const rows = [
+    ["更新时间", "销售账号", "销售姓名", "学生", "性别", "省份", "城市", "区县", "阶段", "升学路径", "目标高中", "总分", "各科成绩", "客户分层", "分层依据", "家长关注", "孩子问题", "跟踪学科", "补习经历", "异议", "下一步动作", "推荐主讲", "沟通对象", "家长原话", "销售备注", "学情摘要", "状态"],
+    ...records.map((record) => {
+      const call = record.call || {};
+      const scores = call.scores || {};
+      const level = record.analysis?.customerLevel;
+      const subjectScores = [
+        ["语文", scores.chinese], ["数学", scores.math], ["英语", scores.english],
+        ["物理", scores.physics], ["化学", scores.chemistry], ["历史", scores.history]
+      ].filter(([, value]) => value !== "" && value !== undefined).map(([name, value]) => `${name}${value}`).join("、");
+      return [
+        record.updatedAt || record.createdAt,
+        record.owner?.username || "",
+        record.owner?.name || "",
+        call.studentName || "",
+        call.gender || "",
+        call.province || "",
+        call.city || "",
+        call.district || "",
+        call.stage || "",
+        call.pathway || "",
+        call.school || "",
+        scores.total || "",
+        subjectScores,
+        customerTierLabel(record),
+        level && typeof level === "object" ? level.reason || "" : "",
+        Array.isArray(call.concern) ? call.concern.join("、") : "",
+        Array.isArray(call.problems) ? call.problems.join("、") : "",
+        trackedSubjects(record).join("、"),
+        Array.isArray(call.tutoring) ? call.tutoring.join("、") : "",
+        Array.isArray(call.objections) ? call.objections.join("、") : "",
+        Array.isArray(call.next) ? call.next.join("、") : "",
+        record.analysis?.teacher || "",
+        call.decision || call.teacherTarget || "",
+        call.quotes || "",
+        call.notes || "",
+        record.analysis?.report || "",
         record.status || ""
       ];
     })
@@ -323,8 +393,26 @@ async function handleApi(req, res, url) {
     const user = requireUser(req, res);
     if (!user) return;
     const records = visibleRecords(await readCallRecords(), user)
-      .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+      .sort((a, b) => String(b.updatedAt || b.createdAt).localeCompare(String(a.updatedAt || a.createdAt)));
     sendJson(res, 200, { records });
+    return;
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/calls/export") {
+    const user = requireAdmin(req, res);
+    if (!user) return;
+    const sales = String(url.searchParams.get("sales") || "");
+    const tier = String(url.searchParams.get("tier") || "");
+    const records = visibleRecords(await readCallRecords(), user)
+      .filter((record) => !sales || record.owner?.username === sales)
+      .filter((record) => !tier || customerTierCode(record) === tier)
+      .sort((a, b) => String(b.updatedAt || b.createdAt).localeCompare(String(a.updatedAt || a.createdAt)));
+    res.writeHead(200, {
+      "Content-Type": "text/csv; charset=utf-8",
+      "Cache-Control": "no-store",
+      "Content-Disposition": "attachment; filename=call-records.csv"
+    });
+    res.end(`\uFEFF${callsToCsv(records)}`);
     return;
   }
 
@@ -332,11 +420,22 @@ async function handleApi(req, res, url) {
     const user = requireUser(req, res);
     if (!user) return;
     const body = await readBody(req);
-    const record = sanitizeCallRecord(body, user);
     const records = await readCallRecords();
-    records.push(record);
+    const studentName = String(body.call?.studentName || "").trim().toLowerCase();
+    if (!studentName) {
+      sendJson(res, 400, { error: "请先填写学生姓名，再复制学情摘要" });
+      return;
+    }
+    const index = records.findIndex((record) => (
+      record.owner?.username === user.username
+      && String(record.call?.studentName || "").trim().toLowerCase() === studentName
+    ));
+    const existing = index >= 0 ? records[index] : null;
+    const record = sanitizeCallRecord(body, user, existing);
+    if (index >= 0) records[index] = record;
+    else records.push(record);
     await writeCallRecords(records);
-    sendJson(res, 201, { record });
+    sendJson(res, existing ? 200 : 201, { record, updated: Boolean(existing) });
     return;
   }
 

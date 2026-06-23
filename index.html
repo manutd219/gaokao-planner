@@ -566,6 +566,59 @@
       justify-content: flex-end;
     }
 
+    .backend-tabs {
+      display: flex;
+      gap: 8px;
+      margin: 16px 0;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .backend-tab {
+      min-height: 40px;
+      padding: 0 16px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      color: #40506a;
+      background: #f8fafc;
+      cursor: pointer;
+      font-weight: 800;
+    }
+
+    .backend-tab.active {
+      color: #ffffff;
+      border-color: var(--blue);
+      background: var(--blue);
+    }
+
+    .backend-data-panel[hidden] {
+      display: none;
+    }
+
+    .summary-details {
+      min-width: 180px;
+    }
+
+    .summary-details summary {
+      color: var(--blue);
+      cursor: pointer;
+      font-weight: 800;
+    }
+
+    .summary-details pre {
+      max-width: 520px;
+      max-height: 260px;
+      overflow: auto;
+      margin: 8px 0 0;
+      padding: 10px;
+      border: 1px solid var(--line);
+      color: #344054;
+      background: #f8fafc;
+      white-space: pre-wrap;
+      font: inherit;
+      line-height: 1.6;
+    }
+
     .records-table-wrap {
       overflow: auto;
       border: 1px solid var(--line);
@@ -1251,7 +1304,7 @@
       </section>
 
       <section class="call-panel view-panel" id="callView">
-        <iframe class="call-frame" id="callFrame" src="外呼记录面板-demo.html?v=20260622d" title="销售外呼面板"></iframe>
+        <iframe class="call-frame" id="callFrame" src="外呼记录面板-demo.html?v=20260623a" title="销售外呼面板"></iframe>
         <div class="call-toolbar">
           <label>最近10次外呼记录
             <select id="callRecentSelect"><option value="">暂无外呼记录</option></select>
@@ -1524,69 +1577,84 @@
       <section class="backend-panel view-panel" id="backendView">
         <div class="backend-head">
           <div>
-            <h2>后台咨询记录</h2>
-            <p class="status-text" id="backendSummary">登录后可查看保存记录。管理员可看全部，销售只看自己的记录。</p>
+            <h2>后台数据</h2>
+            <p class="status-text" id="backendSummary">管理员可分别查看规划查询数据和销售外呼记录。</p>
           </div>
           <div class="backend-head-actions">
-            <button class="btn btn-secondary" id="exportRecordsBtn" type="button">导出记录</button>
             <button class="btn btn-primary" id="refreshRecordsBtn" type="button">刷新后台</button>
           </div>
         </div>
-        <div class="backend-tools">
-          <label>搜索学生/地区/目标/备注
-            <input id="recordSearch" placeholder="输入关键词筛选" />
-          </label>
-          <label>跟进状态
-            <select id="recordStatusFilter">
-              <option value="">全部</option>
-              <option>未跟进</option>
-              <option>已沟通</option>
-              <option>重点跟进</option>
-              <option>已报名</option>
-              <option>暂不考虑</option>
-            </select>
-          </label>
+        <div class="backend-tabs" role="tablist" aria-label="后台数据分类">
+          <button class="backend-tab active" type="button" role="tab" aria-selected="true" data-backend-tab="planning">规划查询数据</button>
+          <button class="backend-tab" type="button" role="tab" aria-selected="false" data-backend-tab="calls">销售外呼看板</button>
         </div>
-        <div class="records-table-wrap">
-          <table class="records-table">
-            <thead>
-              <tr>
-                <th>保存时间</th>
-                <th>销售</th>
-                <th>学生</th>
-                <th>地区</th>
-                <th>目标高中</th>
-                <th>中考总分</th>
-                <th>高考层次预估</th>
-                <th>暑假重点</th>
-                <th>补充信息</th>
-                <th>状态</th>
-              </tr>
-            </thead>
-            <tbody id="recordsBody">
-              <tr><td colspan="10">暂无记录，请先登录并保存一条学生规划。</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <div class="backend-head" style="margin-top:24px;">
-          <div>
-            <h2>后台外呼记录</h2>
-            <p class="status-text">管理员查看销售保存的外呼摘要、关注点和下一步动作。</p>
+
+        <section class="backend-data-panel" data-backend-panel="planning">
+          <div class="backend-head">
+            <div><h2>规划查询数据</h2></div>
+            <button class="btn btn-secondary" id="exportRecordsBtn" type="button">导出规划数据</button>
           </div>
-        </div>
-        <div class="records-table-wrap">
-          <table class="records-table">
-            <thead>
-              <tr><th>保存时间</th><th>销售</th><th>学生</th><th>地区</th><th>阶段</th><th>家长关注</th><th>孩子问题</th><th>下一步</th></tr>
-            </thead>
-            <tbody id="callRecordsBody"><tr><td colspan="8">暂无外呼记录。</td></tr></tbody>
-          </table>
-        </div>
+          <div class="backend-tools">
+            <label>搜索学生/地区/目标/备注
+              <input id="recordSearch" placeholder="输入关键词筛选" />
+            </label>
+            <label>跟进状态
+              <select id="recordStatusFilter">
+                <option value="">全部</option>
+                <option>未跟进</option>
+                <option>已沟通</option>
+                <option>重点跟进</option>
+                <option>已报名</option>
+                <option>暂不考虑</option>
+              </select>
+            </label>
+          </div>
+          <div class="records-table-wrap">
+            <table class="records-table">
+              <thead>
+                <tr>
+                  <th>保存时间</th><th>销售</th><th>学生</th><th>地区</th><th>目标高中</th>
+                  <th>中考总分</th><th>高考层次预估</th><th>暑假重点</th><th>补充信息</th><th>状态</th>
+                </tr>
+              </thead>
+              <tbody id="recordsBody"><tr><td colspan="10">暂无记录，请先登录并保存一条学生规划。</td></tr></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="backend-data-panel" data-backend-panel="calls" hidden>
+          <div class="backend-head">
+            <div>
+              <h2>销售外呼看板</h2>
+              <p class="status-text" id="callBackendSummary">每名销售、每名学生只保留最近一次复制的学情摘要。</p>
+            </div>
+            <button class="btn btn-secondary" id="exportCallRecordsBtn" type="button">导出外呼数据</button>
+          </div>
+          <div class="backend-tools">
+            <label>销售账号
+              <select id="callSalesFilter"><option value="">全部销售</option></select>
+            </label>
+            <label>客户分层
+              <select id="callTierFilter">
+                <option value="">全部分层</option><option value="A">A 类</option><option value="B">B 类</option>
+                <option value="C">C 类</option><option value="D">D 类</option><option value="pending">待判断</option>
+              </select>
+            </label>
+          </div>
+          <div class="records-table-wrap">
+            <table class="records-table">
+              <thead>
+                <tr><th>更新时间</th><th>销售账号</th><th>学生信息</th><th>地区/阶段</th><th>客户分层</th><th>跟踪学科</th><th>家长关注</th><th>孩子问题</th><th>下一步</th><th>学情摘要</th></tr>
+              </thead>
+              <tbody id="callRecordsBody"><tr><td colspan="10">暂无外呼记录。</td></tr></tbody>
+            </table>
+          </div>
+        </section>
       </section>
     </section>
   </main>
 
-  <script src="call-panel.js?v=20260622c"></script>
+  <script src="call-panel.js?v=20260623a"></script>
   <script>
     const form = document.querySelector("#studentForm");
     const scoreFields = document.querySelector("#scoreFields");
@@ -1679,6 +1747,23 @@
         if (!document.body.classList.contains("sidebar-pinned")) {
           document.body.classList.remove("sidebar-open");
         }
+      });
+    }
+
+    function setupBackendTabs() {
+      document.querySelectorAll("[data-backend-tab]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const target = button.dataset.backendTab;
+          document.querySelectorAll("[data-backend-tab]").forEach((item) => {
+            const active = item === button;
+            item.classList.toggle("active", active);
+            item.setAttribute("aria-selected", String(active));
+          });
+          document.querySelectorAll("[data-backend-panel]").forEach((panel) => {
+            panel.hidden = panel.dataset.backendPanel !== target;
+          });
+          if (target === "calls") renderAdminCallRecords();
+        });
       });
     }
 
@@ -3302,7 +3387,7 @@
     document.querySelector("#userLookupInput").addEventListener("keydown", (event) => {
       if (event.key === "Enter") loadLookupRecord();
     });
-    document.querySelector("#refreshRecordsBtn").addEventListener("click", loadRecords);
+    document.querySelector("#refreshRecordsBtn").addEventListener("click", () => Promise.all([loadRecords(), loadCallRecords()]));
     document.querySelector("#exportRecordsBtn").addEventListener("click", exportRecords);
     document.querySelector("#recordSearch").addEventListener("input", renderRecords);
     document.querySelector("#recordStatusFilter").addEventListener("change", renderRecords);
@@ -3339,6 +3424,7 @@
 
     render();
     setupSidebar();
+    setupBackendTabs();
     initializeLayout();
     setupCallPanel();
     loadConfig().then(checkSession);

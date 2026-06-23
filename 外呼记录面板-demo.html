@@ -1208,9 +1208,45 @@ function render(){
   document.getElementById("analysisReport").dataset.copyText = analysis.text;
 }
 
+function trackedSubjectsFor(s){
+  const diagnosed = activeSubjects(s);
+  if(diagnosed.length) return diagnosed;
+  const references = {chinese:["语文",120], math:["数学",120], english:["英语",120], physics:["物理",100], chemistry:["化学",100], history:["历史",100]};
+  const scored = Object.entries(references)
+    .filter(([key]) => s.scores[key] !== "" && Number.isFinite(Number(s.scores[key])))
+    .map(([key,[name,max]]) => ({name, ratio:Number(s.scores[key]) / max}))
+    .sort((a,b) => a.ratio - b.ratio);
+  if(!scored.length) return [];
+  const floor = scored[0].ratio;
+  return scored.filter(item => item.ratio <= floor + .08).slice(0,2).map(item => item.name);
+}
+
+function callSnapshotAnalysis(state){
+  return {
+    report: document.getElementById("report").value,
+    differential: document.getElementById("analysisReport").dataset.copyText || "",
+    wechat: document.getElementById("wechatText").textContent || "",
+    teacher: teacherTopLine(state),
+    customerLevel: inferCustomerLevel(state),
+    concernType: inferConcern(state),
+    trackedSubjects: trackedSubjectsFor(state)
+  };
+}
+
+function postCallSnapshot(type, state){
+  const targetOrigin = window.location.origin === "null" ? "*" : window.location.origin;
+  window.parent.postMessage({type, payload:state, analysis:callSnapshotAnalysis(state)}, targetOrigin);
+}
+
 document.getElementById("copyReport").addEventListener("click", async () => {
   await navigator.clipboard.writeText(document.getElementById("report").value);
-  alert("已复制学情摘要");
+  const state = getState();
+  if(!state.studentName){
+    alert("已复制学情摘要；填写学生姓名后才会保存到后台");
+    return;
+  }
+  postCallSnapshot("gaokao-planner:save-call-summary", state);
+  alert("已复制学情摘要，并更新后台外呼记录");
 });
 document.getElementById("copyWechat").addEventListener("click", async () => {
   await navigator.clipboard.writeText(document.getElementById("wechatText").textContent);
@@ -1236,19 +1272,7 @@ document.getElementById("generatePlanBtn").addEventListener("click", () => {
     alert("请先填写学生姓名、省份和城市");
     return;
   }
-  const targetOrigin = window.location.origin === "null" ? "*" : window.location.origin;
-  window.parent.postMessage({
-    type: "gaokao-planner:generate-from-call",
-    payload: state,
-    analysis: {
-      report: document.getElementById("report").value,
-      differential: document.getElementById("analysisReport").dataset.copyText || "",
-      wechat: document.getElementById("wechatText").textContent || "",
-      nextLine: nextLine(state),
-      teacher: teacherTopLine(state),
-      customerLevel: inferCustomerLevel(state)
-    }
-  }, targetOrigin);
+  postCallSnapshot("gaokao-planner:generate-from-call", state);
 });
 
 render();

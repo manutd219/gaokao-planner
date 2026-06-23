@@ -241,11 +241,61 @@ async function loadCallRecords() {
   try {
     const payload = await apiFetch("/api/calls");
     allCallRecords = payload.records || [];
+    renderCallSalesFilter();
     renderCallRecentSelector();
     renderAdminCallRecords();
   } catch (error) {
     setCallMessage(error.message);
   }
+}
+
+function callCustomerLevel(record) {
+  const level = record.analysis?.customerLevel;
+  if (level && typeof level === "object") return level;
+  const label = String(level || record.analysis?.profile || "待判断：信息不足");
+  return { label, reason: "" };
+}
+
+function callTierCode(record) {
+  const matched = callCustomerLevel(record).label.match(/^[ABCD]/i);
+  return matched ? matched[0].toUpperCase() : "pending";
+}
+
+function callTrackedSubjects(record) {
+  const saved = record.analysis?.trackedSubjects;
+  if (Array.isArray(saved) && saved.length) return saved;
+  const state = record.call || {};
+  const selected = Array.isArray(state.subjects)
+    ? state.subjects.filter((item) => item && !String(item).includes("暂不确定"))
+    : [];
+  if (selected.length) return selected;
+  const problems = Array.isArray(state.problems) ? state.problems.join(" ") : "";
+  return ["语文", "数学", "英语", "物理", "化学", "历史"].filter((item) => problems.includes(item));
+}
+
+function renderCallSalesFilter() {
+  const select = document.querySelector("#callSalesFilter");
+  if (!select) return;
+  const selected = select.value;
+  const owners = new Map();
+  allCallRecords.forEach((record) => {
+    const username = record.owner?.username;
+    if (username) owners.set(username, record.owner?.name || username);
+  });
+  select.innerHTML = `<option value="">全部销售</option>${[...owners.entries()]
+    .sort(([a], [b]) => a.localeCompare(b, "zh-CN"))
+    .map(([username, name]) => `<option value="${escapeHtml(username)}">${escapeHtml(username)} · ${escapeHtml(name)}</option>`)
+    .join("")}`;
+  if (owners.has(selected)) select.value = selected;
+}
+
+function filteredCallRecords() {
+  const sales = document.querySelector("#callSalesFilter")?.value || "";
+  const tier = document.querySelector("#callTierFilter")?.value || "";
+  return [...allCallRecords]
+    .filter((record) => !sales || record.owner?.username === sales)
+    .filter((record) => !tier || callTierCode(record) === tier)
+    .sort((a, b) => String(b.updatedAt || b.createdAt).localeCompare(String(a.updatedAt || a.createdAt)));
 }
 
 function callRecordLabel(record) {
@@ -266,23 +316,56 @@ function renderAdminCallRecords() {
   const body = document.querySelector("#callRecordsBody");
   if (!body) return;
   if (currentUser?.role !== "admin") {
-    body.innerHTML = `<tr><td colspan="8">只有管理员可以查看全部外呼记录。</td></tr>`;
+    body.innerHTML = `<tr><td colspan="10">只有管理员可以查看全部外呼记录。</td></tr>`;
     return;
   }
-  const records = [...allCallRecords].sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  const records = filteredCallRecords();
+  const summary = document.querySelector("#callBackendSummary");
+  if (summary) summary.textContent = `当前筛选 ${records.length} 条；同一销售、同一学生只保留最新记录。`;
   body.innerHTML = records.length ? records.map((record) => {
     const state = record.call || {};
+    const scores = state.scores || {};
+    const level = callCustomerLevel(record);
+    const report = record.analysis?.report || "暂无学情摘要";
     return `<tr>
-      <td>${escapeHtml(formatTime(record.createdAt))}</td>
-      <td>${escapeHtml(record.owner?.name || record.owner?.username || "-")}</td>
-      <td>${escapeHtml(state.studentName || "-")}</td>
-      <td>${escapeHtml([state.province, state.city].filter(Boolean).join(" ") || "-")}</td>
-      <td>${escapeHtml(state.stage || "-")}</td>
+      <td>${escapeHtml(formatTime(record.updatedAt || record.createdAt))}</td>
+      <td><strong>${escapeHtml(record.owner?.username || "-")}</strong><br><span class="status-text">${escapeHtml(record.owner?.name || "")}</span></td>
+      <td><strong>${escapeHtml(state.studentName || "-")}</strong><br><span class="status-text">${escapeHtml(state.gender || "性别未填")} · ${escapeHtml(state.school || state.pathway || "目标未填")} · 总分${escapeHtml(scores.total || "未填")}</span></td>
+      <td>${escapeHtml([state.province, state.city, state.district].filter(Boolean).join(" ") || "-")}<br><span class="status-text">${escapeHtml(state.stage || "阶段未填")}</span></td>
+      <td><strong>${escapeHtml(level.label)}</strong><br><span class="status-text">${escapeHtml(level.reason || "")}</span></td>
+      <td>${escapeHtml(callTrackedSubjects(record).join("、") || "待判断")}</td>
       <td>${escapeHtml(state.concern?.join("、") || "-")}</td>
       <td>${escapeHtml(state.problems?.join("、") || "-")}</td>
       <td>${escapeHtml(state.next?.join("、") || "-")}</td>
+      <td><details class="summary-details"><summary>查看摘要</summary><pre>${escapeHtml(report)}</pre></details></td>
     </tr>`;
-  }).join("") : `<tr><td colspan="8">暂无外呼记录。</td></tr>`;
+  }).join("") : `<tr><td colspan="10">暂无符合筛选条件的外呼记录。</td></tr>`;
+}
+
+async function exportCallRecords() {
+  if (!currentUser || currentUser.role !== "admin") {
+    setBackendMessage("只有管理员可以导出外呼数据。");
+    return;
+  }
+  const params = new URLSearchParams();
+  const sales = document.querySelector("#callSalesFilter")?.value || "";
+  const tier = document.querySelector("#callTierFilter")?.value || "";
+  if (sales) params.set("sales", sales);
+  if (tier) params.set("tier", tier);
+  try {
+    const response = await fetch(`/api/calls/export?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${authToken}` }
+    });
+    if (!response.ok) throw new Error("导出失败，请稍后再试");
+    const blob = await response.blob();
+    const link = document.createElement("a");
+    link.download = `外呼记录-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.href = URL.createObjectURL(blob);
+    link.click();
+    URL.revokeObjectURL(link.href);
+  } catch (error) {
+    setBackendMessage(error.message);
+  }
 }
 
 function loadCallRecord(record) {
@@ -412,11 +495,20 @@ function renderSalesUserSummary(data, analysis, callContext) {
 function setupCallPanel() {
   const frame = document.querySelector("#callFrame");
   if (frame) {
+    document.querySelector("#callSalesFilter")?.addEventListener("change", renderAdminCallRecords);
+    document.querySelector("#callTierFilter")?.addEventListener("change", renderAdminCallRecords);
+    document.querySelector("#exportCallRecordsBtn")?.addEventListener("click", exportCallRecords);
     window.addEventListener("message", async (event) => {
       if (event.origin !== window.location.origin) return;
-      if (event.data?.type !== "gaokao-planner:generate-from-call") return;
+      const type = event.data?.type;
+      if (!["gaokao-planner:save-call-summary", "gaokao-planner:generate-from-call"].includes(type)) return;
       try {
-        await generatePlanFromReplicatedCall(event.data.payload, event.data.analysis || {});
+        if (type === "gaokao-planner:save-call-summary") {
+          const record = await saveReplicatedCallRecord(event.data.payload, event.data.analysis || {});
+          setBackendMessage(`已更新${record.call?.studentName || "学生"}的外呼摘要记录。`);
+        } else {
+          await generatePlanFromReplicatedCall(event.data.payload, event.data.analysis || {});
+        }
       } catch (error) {
         setBackendMessage(error.message);
       }
