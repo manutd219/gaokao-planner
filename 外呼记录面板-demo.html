@@ -41,7 +41,7 @@
     position:sticky;
     top:0;
     z-index:4;
-    padding:12px 14px;
+    padding:8px 12px;
     border-bottom:1px solid var(--line);
     background:rgba(245,241,232,.95);
     backdrop-filter:blur(10px);
@@ -49,20 +49,20 @@
   .top-grid{
     display:grid;
     grid-template-columns:1fr 1.45fr 1.2fr .85fr;
-    gap:10px;
+    gap:8px;
   }
   .top-card{
-    min-height:96px;
+    min-height:78px;
     background:var(--panel);
     border:1px solid var(--line);
     border-radius:var(--r);
-    padding:11px 12px;
+    padding:8px 10px;
   }
   .top-card.next{background:#f8fbff;border-color:#cbd7ee}
   .top-card.teacher{background:#f7fcf9;border-color:#bddfcf}
   .top-card.missing-card{background:#fffaf4;border-color:#efd1aa}
-  .top-label{font-size:12px;color:var(--faint);font-weight:800;margin-bottom:6px}
-  .top-main{font-size:14px;font-weight:700;color:var(--ink);line-height:1.5}
+  .top-label{font-size:11px;color:var(--faint);font-weight:800;margin-bottom:3px}
+  .top-main{font-size:13px;font-weight:700;color:var(--ink);line-height:1.4}
   .main-grid{
     display:grid;
     grid-template-columns:minmax(320px,360px) minmax(0,1fr);
@@ -91,8 +91,8 @@
   }
   .sticky{
     position:sticky;
-    top:130px;
-    max-height:calc(100vh - 144px);
+    top:102px;
+    max-height:calc(100vh - 116px);
     overflow:auto;
     padding-right:2px;
   }
@@ -143,13 +143,13 @@
   }
   .score-grid label{margin-top:0}
   .score-grid input{padding:7px 8px}
-  .badge-row{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+  .badge-row{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0}
   .badge{
     display:inline-flex;
     align-items:center;
     border-radius:999px;
-    padding:5px 9px;
-    font-size:12px;
+    padding:3px 7px;
+    font-size:11px;
     font-weight:700;
     background:var(--blue-soft);
     color:var(--blue2);
@@ -215,8 +215,8 @@
   .section-title{display:flex;justify-content:space-between;gap:8px;align-items:center}
   .section-title span{color:var(--faint);font-size:12px}
   .divider{height:1px;background:var(--line);margin:12px 0}
-  .missing{display:flex;flex-wrap:wrap;gap:6px}
-  .missing span{font-size:12px;border:1px dashed #d7b07d;color:#8a4f12;background:#fff7ed;border-radius:999px;padding:4px 8px}
+  .missing{display:flex;flex-wrap:wrap;gap:5px}
+  .missing span{font-size:11px;border:1px dashed #d7b07d;color:#8a4f12;background:#fff7ed;border-radius:999px;padding:3px 7px}
   .kbd{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#f0eee8;border:1px solid #ddd3c0;border-radius:5px;padding:1px 5px}
 </style>
 </head>
