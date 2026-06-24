@@ -99,6 +99,7 @@
   .sticky .card{padding:12px}
   .sticky label{margin:6px 0 4px}
   .sticky textarea{min-height:58px}
+  .sticky #quotes{min-height:130px}
   .sticky h2{margin-bottom:8px}
   .sticky::-webkit-scrollbar{width:6px}
   .sticky::-webkit-scrollbar-thumb{background:#d6cbbb;border-radius:999px}
@@ -247,10 +248,9 @@
   <section class="col sticky">
     <div class="card">
       <h2>1. 销售记录</h2>
-      <label>家长原话 / 关键句</label>
-      <textarea id="quotes" placeholder="尽量记录家长原话：孩子不想学、我管不动、先看看、已经报了学校班……"></textarea>
-      <label>销售备注</label>
-      <textarea id="notes" placeholder="可粘贴完整用户信息，系统会自动识别地区、阶段、成绩、学科和家长需求。"></textarea>
+      <label>用户信息 / 沟通记录</label>
+      <textarea id="quotes" placeholder="可粘贴完整用户信息和家长原话，例如：地区、阶段、成绩、薄弱学科、孩子状态、已报课程和家长顾虑等。"></textarea>
+      <input id="notes" type="hidden">
       <div class="data-note">输入停止后自动补全其他字段；无法确认的信息保持空白。</div>
     </div>
 
