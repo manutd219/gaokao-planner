@@ -246,7 +246,16 @@
   <div class="main-grid">
   <section class="col sticky">
     <div class="card">
-      <h2>1. 基础信息</h2>
+      <h2>1. 销售记录</h2>
+      <label>家长原话 / 关键句</label>
+      <textarea id="quotes" placeholder="尽量记录家长原话：孩子不想学、我管不动、先看看、已经报了学校班……"></textarea>
+      <label>销售备注</label>
+      <textarea id="notes" placeholder="可粘贴完整用户信息，系统会自动识别地区、阶段、成绩、学科和家长需求。"></textarea>
+      <div class="data-note">输入停止后自动补全其他字段；无法确认的信息保持空白。</div>
+    </div>
+
+    <div class="card">
+      <h2>2. 基础信息</h2>
       <div class="grid2">
         <div>
           <label>学生姓名</label>
@@ -336,7 +345,7 @@
     </div>
 
     <div class="card">
-      <h2>2. 分数记录</h2>
+      <h2>3. 分数记录</h2>
       <div class="score-grid">
         <div><label>总分</label><input id="scoreTotal" type="number" placeholder="分"></div>
         <div><label>语文</label><input id="scoreChinese" type="number"></div>
@@ -351,13 +360,6 @@
       <textarea id="scoreNote" placeholder="例：英语只有三四十分；数学一百左右；物理喜欢但成绩不清楚。"></textarea>
     </div>
 
-    <div class="card">
-      <h2>3. 销售记录</h2>
-      <label>家长原话 / 关键句</label>
-      <textarea id="quotes" placeholder="尽量记录家长原话：孩子不想学、我管不动、先看看、已经报了学校班……"></textarea>
-      <label>销售备注</label>
-      <textarea id="notes" placeholder="记录未结构化信息：家庭情况、孩子在哪里、谁照顾、暑假安排、竞品信息等。"></textarea>
-    </div>
   </section>
 
   <section class="col">
@@ -619,6 +621,89 @@ pEl.addEventListener("change", updateCities);
 els.city.addEventListener("change", updateDistricts);
 Object.values(els).forEach(el => el.addEventListener("input", render));
 Object.values(els).forEach(el => el.addEventListener("change", render));
+
+function fillEmpty(id,value){
+  if(value && !els[id].value) els[id].value = value;
+}
+function selectDetectedChip(group,labelPart){
+  const chip = [...document.querySelectorAll(`[data-group="${group}"] .chip`)]
+    .find(item => item.textContent.includes(labelPart));
+  if(chip) chip.classList.add("sel");
+}
+function firstMatch(text,pattern){
+  return text.match(pattern)?.[1]?.trim() || "";
+}
+function detectScore(text,label){
+  const pattern = new RegExp(`${label}(?:\\s*成绩)?\\s*(?:是|约|大概|只有|考了|在|[:：])?\\s*(\\d{1,4})(?:\\s*分)?`);
+  return firstMatch(text,pattern);
+}
+function detectRegion(text){
+  const province = Object.keys(regionByProvince).find(name => text.includes(name));
+  if(province && !els.province.value){
+    els.province.value = province;
+    updateCities();
+  }
+  const activeProvince = els.province.value;
+  if(!activeProvince) return;
+  const cities = Object.keys(regionByProvince[activeProvince] || {});
+  const city = cities.find(name => text.includes(name) || text.includes(name.replace(/(市|地区|自治州)$/u,"")));
+  if(city && !els.city.value){
+    els.city.value = city;
+    updateDistricts();
+  }
+  const districts = (regionByProvince[activeProvince] || {})[els.city.value] || [];
+  const district = districts.find(name => text.includes(name) || text.includes(name.replace(/(区|县|旗|市)$/u,"")));
+  if(district && !els.district.value) els.district.value = district;
+}
+function applySalesTextAutofill(){
+  const text = `${els.quotes.value}\n${els.notes.value}`.replace(/\s+/g," ").trim();
+  if(!text) return;
+
+  fillEmpty("studentName", firstMatch(text,/(?:学生姓名|姓名|孩子叫|学生叫)\s*[：:为是叫]?\s*([\u4e00-\u9fa5·]{2,8})(?=[，。；;\s]|$)/u)
+    || firstMatch(text,/([\u4e00-\u9fa5·]{1,6})同学/u));
+  if(!els.gender.value){
+    if(/(?:男生|男孩|儿子)/.test(text)) els.gender.value = "男";
+    if(/(?:女生|女孩|女儿)/.test(text)) els.gender.value = "女";
+  }
+  detectRegion(text);
+
+  const selectRules = {
+    stage: [[/已中考完|中考结束/,"已中考完"],[/等成绩|成绩未出/,"等成绩"],[/已确定高中|已定高中/,"已确定高中"],[/复读|初三复读/,"复读/补习"],[/中考前|还没中考/,"中考前"]],
+    decision: [[/爸爸|父亲/,"爸爸"],[/妈妈|母亲/,"妈妈"],[/父母一起|父母共同/,"父母共同决策"],[/孩子本人|学生本人/,"孩子本人"]],
+    pathway: [[/重点高中|重点班|优质高中/,"重点/优质高中"],[/普通高中|本地普高|普高/,"普通高中"],[/私立高中|民办高中/,"私立高中"],[/职高|中职/,"职高/中职方向"]]
+  };
+  Object.entries(selectRules).forEach(([id,rules]) => {
+    if(els[id].value) return;
+    const match = rules.find(([pattern]) => pattern.test(text));
+    if(match) els[id].value = match[1];
+  });
+  fillEmpty("school", firstMatch(text,/(?:目标高中|目标学校)\s*[：:为是]?\s*([^，。；;\n]{2,20})/u));
+
+  const scores = {
+    scoreTotal: detectScore(text,"总分"), scoreChinese: detectScore(text,"语文"),
+    scoreMath: detectScore(text,"数学"), scoreEnglish: detectScore(text,"英语"),
+    scorePhysics: detectScore(text,"物理"), scoreChemistry: detectScore(text,"化学"),
+    scoreHistory: detectScore(text,"历史"), rank: firstMatch(text,/(?:省排|位次|排名)\s*[:：约是]?\s*(\d{1,8})/u)
+  };
+  Object.entries(scores).forEach(([id,value]) => fillEmpty(id,value));
+
+  const chipRules = [
+    ["reason","先看看",/先看看|先了解/],["reason","看课程安排",/课程安排|怎么上|回放/],["reason","担心高一跟不上",/高一.*跟不上|担心.*高一/],["reason","担心某一科",/担心.*(?:数学|英语|物理|化学)/],
+    ["concern","安排型",/时间|课程安排|回放|怎么上/],["concern","效果型",/提分|效果|成绩|值不值/],["concern","状态型",/不想学|不配合|管不动|沉迷游戏/],["concern","规划型",/选科|大学|专业|规划/],["concern","比较型",/价格|多少钱|已经报|对比/],
+    ["problems","英语断层",/英语.*(?:断层|基础差|不及格|听不懂)/],["problems","数学薄弱",/数学.*(?:薄弱|基础差|不及格|听不懂)/],["problems","物理薄弱",/物理.*(?:薄弱|基础差|不及格|听不懂)/],["problems","化学薄弱",/化学.*(?:薄弱|基础差|不及格|听不懂)/],["problems","偏科严重",/偏科/],["problems","审题跳步",/审题|跳步|粗心/],["problems","不愿学",/不想学|不愿学/],["problems","沉迷游戏",/沉迷游戏|爱玩游戏/],["problems","家长管不动",/管不动/],["problems","自驱不足",/自驱不足|不主动/],["problems","想学但听不懂",/想学.*(?:听不懂|跟不上)/],
+    ["subjects","数学",/数学/],["subjects","物理",/物理/],["subjects","化学",/化学/],["subjects","英语",/英语/],["subjects","数理化",/数理化/],["subjects","物化生",/物化生|理科方向/],
+    ["tutoring","无补习经历",/没补过|无补习/],["tutoring","线上补习",/线上补习|网课/],["tutoring","线下补习",/线下补习|线下班/],["tutoring","一对一补习",/一对一/],
+    ["objections","孩子不配合",/孩子不配合|不愿意上/],["objections","已报学校班",/已报学校班|学校班/],["objections","已报机构",/已报机构|已报一对一/],["objections","先问价格",/价格|多少钱/],["objections","线上效果顾虑",/线上.*(?:没效果|效果不好|顾虑)/]
+  ];
+  chipRules.forEach(([group,label,pattern]) => { if(pattern.test(text)) selectDetectedChip(group,label); });
+  render();
+}
+
+let salesTextAutofillTimer;
+[els.quotes,els.notes].forEach(el => el.addEventListener("input", () => {
+  clearTimeout(salesTextAutofillTimer);
+  salesTextAutofillTimer = setTimeout(applySalesTextAutofill,450);
+}));
 
 function getState(){
   return {
@@ -1256,8 +1341,9 @@ document.getElementById("copyAnalysis").addEventListener("click", async () => {
   await navigator.clipboard.writeText(document.getElementById("analysisReport").dataset.copyText || "");
   alert("已复制分析报告");
 });
-document.getElementById("resetBtn").addEventListener("click", () => {
-  if(!confirm("确认清空当前 Demo 记录？")) return;
+function resetCallPanel(){
+  if(!confirm("确认清空当前所有填写信息？")) return;
+  clearTimeout(salesTextAutofillTimer);
   Object.values(els).forEach(el => {
     if(el.tagName === "SELECT") el.selectedIndex = 0;
     else el.value = "";
@@ -1265,7 +1351,9 @@ document.getElementById("resetBtn").addEventListener("click", () => {
   document.querySelectorAll(".chip.sel").forEach(x=>x.classList.remove("sel"));
   updateCities();
   render();
-});
+}
+window.resetCallPanel = resetCallPanel;
+document.getElementById("resetBtn").addEventListener("click", resetCallPanel);
 document.getElementById("generatePlanBtn").addEventListener("click", () => {
   const state = getState();
   if(!state.studentName || !state.province || !state.city){

@@ -1261,6 +1261,7 @@
           <p id="viewSubtitle">填写学生中考成绩、地区和补充信息，点击查询规划。</p>
         </div>
         <div class="workspace-actions">
+          <button class="btn btn-secondary" id="resetCallTop" type="button" style="display:none">重置填写</button>
           <button class="btn btn-secondary" id="downloadFamilyTop" type="button">下载家长图</button>
           <button class="btn btn-secondary" id="downloadSalesTop" type="button">下载销售图</button>
           <div class="user-chip">
@@ -1304,7 +1305,7 @@
       </section>
 
       <section class="call-panel view-panel" id="callView">
-        <iframe class="call-frame" id="callFrame" src="外呼记录面板-demo.html?v=20260624b" title="销售外呼面板"></iframe>
+        <iframe class="call-frame" id="callFrame" src="外呼记录面板-demo.html?v=20260624c" title="销售外呼面板"></iframe>
         <div class="call-toolbar">
           <label>最近10次外呼记录
             <select id="callRecentSelect"><option value="">暂无外呼记录</option></select>
@@ -1779,6 +1780,7 @@
       $("#viewSubtitle").textContent = subtitle;
       $("#downloadFamilyTop").style.display = view === "plan" ? "block" : "none";
       $("#downloadSalesTop").style.display = view === "sales" ? "block" : "none";
+      $("#resetCallTop").style.display = view === "call" ? "block" : "none";
       if (["lookup", "plan", "sales"].includes(view) && currentUser) loadRecords();
       if (view === "call" && currentUser) loadCallRecords();
       if (view === "backend") Promise.all([loadRecords(), loadCallRecords()]);
@@ -3377,6 +3379,12 @@
 
     document.querySelector("#saveRecordBtn").addEventListener("click", viewPlanning);
     document.querySelector("#resetFormBtn").addEventListener("click", resetForm);
+    document.querySelector("#resetCallTop").addEventListener("click", () => {
+      const frame = document.querySelector("#callFrame");
+      if (typeof frame?.contentWindow?.resetCallPanel === "function") {
+        frame.contentWindow.resetCallPanel();
+      }
+    });
     document.querySelector("#sumScoresBtn").addEventListener("click", sumVisibleScoresToTotal);
     document.querySelector("#planLoadRecentBtn").addEventListener("click", () => loadSelectedRecent("#planRecentSelect", "plan"));
     document.querySelector("#salesLoadRecentBtn").addEventListener("click", () => loadSelectedRecent("#salesRecentSelect", "sales"));
