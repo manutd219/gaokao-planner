@@ -453,14 +453,24 @@ async function saveReplicatedCallRecord(state, analysis) {
 }
 
 async function generatePlanFromReplicatedCall(state, analysis) {
-  const record = await saveReplicatedCallRecord(state, analysis);
   mapCallToPlanner(state);
-  const saved = await saveRecord();
-  if (!saved) throw new Error("规划记录保存失败");
   showView("plan");
-  setBackendMessage(`已根据${state.studentName}的外呼记录生成学情规划和销售建议。`);
-  return record;
+  setBackendMessage(`已根据${state.studentName}的外呼记录生成学情规划，正在保存记录。`);
+  try {
+    const record = await saveReplicatedCallRecord(state, analysis);
+    const saved = await saveRecord();
+    if (!saved) throw new Error("规划记录保存失败");
+    setBackendMessage(`已根据${state.studentName}的外呼记录生成学情规划和销售建议。`);
+    return record;
+  } catch (error) {
+    setBackendMessage(`学情规划已生成，但自动保存失败：${error.message}`);
+    throw error;
+  }
 }
+
+window.generatePlanFromCallSnapshot = (state, analysis = {}) => {
+  generatePlanFromReplicatedCall(state, analysis).catch(() => {});
+};
 
 async function generatePlanFromCall() {
   try {

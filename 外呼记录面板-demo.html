@@ -1272,6 +1272,13 @@ document.getElementById("generatePlanBtn").addEventListener("click", () => {
     alert("请先填写学生姓名、省份和城市");
     return;
   }
+  const analysis = callSnapshotAnalysis(state);
+  try {
+    if(window.parent !== window && typeof window.parent.generatePlanFromCallSnapshot === "function"){
+      window.parent.generatePlanFromCallSnapshot(state, analysis);
+      return;
+    }
+  }catch(error){}
   postCallSnapshot("gaokao-planner:generate-from-call", state);
 });
 
