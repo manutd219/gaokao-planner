@@ -1161,9 +1161,9 @@
       </div>
 
       <nav class="nav-menu" aria-label="系统导航">
-        <button class="nav-button active" type="button" data-view="query">查询页</button>
+        <button class="nav-button active" type="button" data-view="call">销售外呼面板</button>
+        <button class="nav-button" type="button" data-view="query">查询页</button>
         <button class="nav-button" type="button" data-view="lookup">用户查询</button>
-        <button class="nav-button" type="button" data-view="call">销售外呼面板</button>
         <button class="nav-button" type="button" data-view="plan">用户规划</button>
         <button class="nav-button" type="button" data-view="sales">销售建议</button>
         <button class="nav-button" type="button" data-view="backend" id="backendNav" hidden>后台数据</button>
@@ -1722,7 +1722,7 @@
         mount.appendChild(form);
         mount.appendChild(document.querySelector(".actions"));
       }
-      showView("query");
+      showView("call");
     }
 
     function setSidebarPinned(pinned) {
@@ -1800,10 +1800,10 @@
         : "登录后开始规划";
       $("#backendNav").hidden = currentUser?.role !== "admin";
       $("#loginHint").textContent = loggedIn
-        ? "登录成功。请进入查询页填写学生信息。"
+        ? "登录成功。可在销售外呼面板记录学生信息。"
         : appConfig.loginHint;
       if (loggedIn && currentUser.role !== "admin" && $("#backendView").classList.contains("active")) {
-        showView("query");
+        showView("call");
       }
     }
 
@@ -1829,7 +1829,7 @@
         const payload = await apiFetch("/api/me");
         currentUser = payload.user;
         updateAuthUI();
-        showView("query");
+        showView("call");
         await Promise.all([loadRecords(), loadCallRecords()]);
       } catch {
         authToken = "";
@@ -3351,7 +3351,7 @@
         currentUser = payload.user;
         localStorage.setItem("gaokao_planner_token", authToken);
         updateAuthUI();
-        showView("query");
+        showView("call");
         await Promise.all([loadRecords(), loadCallRecords()]);
       } catch (error) {
         $("#loginHint").textContent = error.message;
