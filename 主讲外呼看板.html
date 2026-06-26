@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>主讲外呼看板</title>
+  <link rel="stylesheet" href="teacher-panel.css?v=20260626b" />
+</head>
+<body>
+  <main class="teacher-app">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">TEACHER CALL DESK</p>
+        <h1>主讲外呼看板</h1>
+        <p class="topbar-subtitle">读取销售交接，先判断学科卡点，再沉淀主讲诊断记录。</p>
+      </div>
+      <div class="topbar-actions">
+        <div class="subject-picker top-inline" aria-label="选择主讲学科">
+          <span>主讲学科</span>
+          <button class="selected" type="button" data-subject-select="数学">数学</button>
+          <button type="button" data-subject-select="物理">物理</button>
+          <button type="button" data-subject-select="英语">英语</button>
+          <button type="button" data-subject-select="化学">化学</button>
+        </div>
+        <button class="button dark" id="openImportBtn" type="button">粘贴销售摘要</button>
+        <span class="save-state" id="saveState">本地自动保存</span>
+        <button class="button secondary" id="loadDemoBtn" type="button">载入演示</button>
+        <button class="button primary" id="saveBtn" type="button">保存记录</button>
+      </div>
+    </header>
+
+    <div class="workspace-grid">
+      <aside class="student-rail">
+        <div class="rail-heading">
+          <div>
+            <span class="section-kicker">课前 30 秒</span>
+            <h2>主讲预习卡</h2>
+          </div>
+        </div>
+
+        <section class="profile-card">
+          <div class="profile-title-row">
+            <div>
+              <span class="section-kicker">当前学生</span>
+              <h3 id="profileName">新学生</h3>
+            </div>
+            <span class="status-dot">待沟通</span>
+          </div>
+
+          <div class="profile-fields">
+            <label>学生姓名<input id="studentName" placeholder="如：陈同学" /></label>
+            <label>地区<input id="studentRegion" placeholder="省份 / 城市" /></label>
+          </div>
+        </section>
+
+        <section class="priority-card">
+          <div>
+            <span>建议沟通对象</span>
+            <textarea id="teacherAudience" rows="1" placeholder="如：家长 + 孩子 / 先家长后孩子"></textarea>
+          </div>
+          <div>
+            <span>主讲诊断重点</span>
+            <textarea id="teacherFocus" rows="2" placeholder="如：核实数学失分是审题、运算还是步骤问题"></textarea>
+          </div>
+        </section>
+
+        <section class="key-snapshot" aria-label="用户重点信息">
+          <div>
+            <span>本地学情</span>
+            <strong id="localContext">待补充</strong>
+          </div>
+          <div>
+            <span>需跟进学科</span>
+            <strong id="primarySubject">待识别</strong>
+          </div>
+          <div>
+            <span>薄弱表现</span>
+            <strong id="weakPoint">待核实</strong>
+          </div>
+        </section>
+
+        <section class="info-block">
+          <div class="block-title"><span>目标学校或层次</span><button class="text-button" data-edit-target="studentTarget" type="button">编辑</button></div>
+          <textarea id="studentTarget" rows="1" placeholder="如：重点高中 / 211；销售未问出可留空"></textarea>
+        </section>
+
+        <section class="info-block">
+          <div class="block-title"><span>成绩与学科证据</span><button class="text-button" data-edit-target="scoreSummary" type="button">编辑</button></div>
+          <textarea id="scoreSummary" rows="3" placeholder="各科成绩、满分、排名和重点学科"></textarea>
+        </section>
+
+        <section class="info-block">
+          <div class="block-title"><span>聚焦问题</span><button class="text-button" data-edit-target="learningState" type="button">编辑</button></div>
+          <textarea id="learningState" rows="4" placeholder="主讲本次要聚焦的问题：薄弱科目、具体表现、补习经历、家长诉求、需要验证的卡点"></textarea>
+        </section>
+
+        <details class="raw-summary">
+          <summary>查看原始销售摘要</summary>
+          <textarea id="rawSalesSummary" rows="12" placeholder="尚未导入销售摘要"></textarea>
+        </details>
+      </aside>
+
+      <section class="main-stage">
+        <div class="stage-columns">
+          <section class="call-workbench">
+            <div class="section-heading compact">
+              <div>
+                <span class="section-kicker">主讲诊断记录</span>
+                <h2>围绕初高衔接拆问题</h2>
+              </div>
+            </div>
+
+            <div class="phase-tabs" role="tablist" aria-label="沟通阶段">
+              <button class="phase-tab active" type="button" data-phase="verify">1 信息核准</button>
+              <button class="phase-tab" type="button" data-phase="subject">2 学科诊断</button>
+              <button class="phase-tab" type="button" data-phase="action">3 结论动作</button>
+            </div>
+
+            <div class="phase-panel active" data-phase-panel="verify">
+              <p class="phase-lead">每张卡都可以直接编辑。无误勾选；有偏差直接改，左侧预习卡会同步更新。</p>
+              <div class="verify-summary-grid">
+                <label><input type="checkbox" data-check="学生与地区已核实" /><span>学生与地区</span><textarea id="verifyStudentInfo" rows="2" placeholder="学生姓名｜地区"></textarea></label>
+                <label><input type="checkbox" data-check="当前主讲学科成绩已核实" /><span id="subjectScoreLabel">当前学科成绩与满分</span><textarea id="verifySubjectScore" rows="2" placeholder="例：数学 100/120；最近三次 98/103/100"></textarea></label>
+                <label><input type="checkbox" data-check="典型错题或失分场景已确认" /><span>典型错题/失分场景</span><textarea id="verifyMistakeScene" rows="2" placeholder="例：物理受力分析题卡住"></textarea></label>
+                <label><input type="checkbox" data-check="孩子配合度已确认" /><span>孩子配合度</span><textarea id="verifyCooperation" rows="2" placeholder="例：愿意沟通 / 需要家长转述"></textarea></label>
+                <label class="wide focus-wide"><input type="checkbox" data-check="聚焦问题已核实" /><span>聚焦问题</span><textarea id="verifyLearningState" rows="7" placeholder="薄弱科目、具体表现、补习经历、家长诉求、孩子配合度、需验证卡点"></textarea></label>
+              </div>
+            </div>
+
+            <div class="phase-panel" data-phase-panel="subject">
+              <p class="phase-lead" id="subjectLead">围绕新高一衔接，不只记“哪科差”，要拆到知识、方法、题型和习惯。</p>
+              <div id="subjectDiagnosisPanel"></div>
+            </div>
+
+            <div class="phase-panel" data-phase-panel="action">
+              <p class="phase-lead">本次先留下一个可验证的学习动作，不做成交判断。</p>
+              <div class="signal-block">
+                <div class="mini-title">主讲沟通信号</div>
+                <div class="signal-options tag-cloud" data-tag-group="callSignal">
+                  <button type="button">家长认可诊断</button><button type="button">孩子愿意配合</button>
+                  <button type="button">愿意交错题</button><button type="button">已约下次沟通</button>
+                  <button type="button">愿意体验课</button><button type="button">只问价格</button>
+                  <button type="button">孩子不配合</button><button type="button">家长没时间</button>
+                  <button type="button">暂不考虑</button><button type="button">不认可诊断</button>
+                </div>
+              </div>
+              <div class="action-options tag-cloud" data-tag-group="action">
+                <button type="button">发送一份试卷</button><button type="button">提交典型错题</button>
+                <button type="button">完成一次限时训练</button><button type="button">执行7天小任务</button>
+                <button type="button">参加体验课观察</button><button type="button">补充最近三次成绩</button>
+              </div>
+              <div class="two-column-inputs">
+                <label>约定完成时间<input id="actionDate" type="date" /></label>
+                <label>下一次沟通时间<input id="followupDate" type="date" /></label>
+              </div>
+            </div>
+
+            <label class="notes-field">
+              <span>主讲通话笔记</span>
+              <textarea id="callNotes" rows="10" placeholder="建议记录：家长原话、具体题型、最近成绩变化、孩子真实表现，以及仍需验证的问题。"></textarea>
+            </label>
+
+            <section class="assistant-card">
+              <div class="summary-card-title">
+                <span class="assistant-label">生成主讲沟通记录</span>
+                <div class="summary-actions">
+                  <button class="button primary" id="generateSummaryBtn" type="button">生成沟通记录</button>
+                  <button class="button secondary" id="copySummaryBtn" type="button">复制记录</button>
+                </div>
+              </div>
+              <textarea id="teacherSummary" rows="14" placeholder="完成沟通后生成内部记录"></textarea>
+            </section>
+          </section>
+
+          <aside class="assistant-rail">
+            <section class="intent-card" id="intentCard">
+              <span class="assistant-label">用户意向度判断</span>
+              <div class="intent-score-row">
+                <strong id="intentScore">--</strong>
+                <div>
+                  <b id="intentLevel">待判断</b>
+                  <p id="intentAction">先补充成绩、问题和配合度。</p>
+                </div>
+              </div>
+              <div class="intent-meter"><i id="intentMeter"></i></div>
+              <ul id="intentReasons"></ul>
+            </section>
+
+            <section class="assistant-card">
+              <span class="assistant-label">专业提示</span>
+              <div class="advice-stack" id="adviceStack"></div>
+            </section>
+
+          </aside>
+        </div>
+      </section>
+    </div>
+
+    <section class="report-builder" aria-label="诊断报告预览">
+      <div class="report-toolbar">
+        <div>
+          <span class="section-kicker accent">家长可发版</span>
+          <h2>诊断报告图片预览</h2>
+        </div>
+        <button class="button primary" id="downloadReportBtn" type="button">下载诊断图片</button>
+      </div>
+
+      <article class="parent-report-card" id="parentReportCard">
+        <div class="report-hero">
+          <div>
+            <p class="report-eyebrow editable-report" contenteditable="true" data-report-field="eyebrow">领世精品小班 · 主讲诊断反馈</p>
+            <h2 id="reportTitle" class="editable-report" contenteditable="true" data-report-field="title">陈同学学科诊断反馈</h2>
+            <p id="reportSubtitle" class="editable-report" contenteditable="true" data-report-field="subtitle">基于主讲沟通记录，聚焦新高一初高衔接。</p>
+          </div>
+          <div class="report-subject-badge editable-report" id="reportSubjectBadge" contenteditable="true" data-report-field="subjectBadge">数学</div>
+        </div>
+
+        <div class="report-metrics">
+          <div><span class="editable-report" contenteditable="true" data-report-field="regionLabel">地区学情</span><strong id="reportRegion" class="editable-report" contenteditable="true" data-report-field="region">广东 深圳</strong></div>
+        </div>
+
+        <section class="report-diagnosis-banner">
+          <span class="editable-report" contenteditable="true" data-report-field="judgementLabel">主讲综合判断</span>
+          <strong id="reportMainJudgement" class="editable-report" contenteditable="true" data-report-field="mainJudgement">当前需要先确认具体失分位置，再判断是基础体系、题型方法还是应用发挥问题。</strong>
+        </section>
+
+        <div class="report-flow">
+          <section class="report-section primary">
+            <span class="editable-report" contenteditable="true" data-report-field="coreLabel">01 个性化问题定位</span>
+            <h3 id="reportCoreIssue" class="editable-report" contenteditable="true" data-report-field="coreIssue">当前先判断孩子属于基础缺、会听不会做还是考试发挥不稳定。</h3>
+            <p id="reportCoreEvidence" class="editable-report" contenteditable="true" data-report-field="coreEvidence">建议用典型错题、最近成绩和限时任务验证。</p>
+          </section>
+          <section class="report-section">
+            <span class="editable-report" contenteditable="true" data-report-field="reasonsLabel">02 底层原因参考</span>
+            <ul id="reportReasons" class="editable-report" contenteditable="true" data-report-field="reasons"></ul>
+          </section>
+          <section class="report-section">
+            <span class="editable-report" contenteditable="true" data-report-field="transitionLabel">03 当地学情与衔接提醒</span>
+            <p id="reportTransition" class="editable-report" contenteditable="true" data-report-field="transition">新高一学习方式变化明显，需要从题型模仿转向体系化理解和独立应用。</p>
+          </section>
+          <section class="report-section action">
+            <span class="editable-report" contenteditable="true" data-report-field="actionsLabel">04 7天验证动作</span>
+            <ul id="reportActions" class="editable-report" contenteditable="true" data-report-field="actions"></ul>
+          </section>
+        </div>
+
+        <div class="report-footer">
+          <strong class="editable-report" contenteditable="true" data-report-field="footerBrand">领世精品小班</strong>
+          <span class="editable-report" contenteditable="true" data-report-field="footerNote">本反馈基于当前沟通信息生成，后续会结合题目诊断和课堂反馈继续校准。</span>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <dialog class="import-dialog" id="importDialog">
+    <form method="dialog">
+      <div class="dialog-heading">
+        <div><span class="section-kicker">销售交接</span><h2>粘贴“生成结果”</h2></div>
+        <button class="icon-button" value="cancel" aria-label="关闭">×</button>
+      </div>
+      <p>支持销售面板现有的“一、基础信息……十、建议下一步”文本格式。无法确认的内容会保留在原始摘要中。</p>
+      <textarea id="importText" rows="18" placeholder="在这里粘贴销售面板第 9 部分生成的完整学情摘要"></textarea>
+      <div class="dialog-actions">
+        <button class="button secondary" value="cancel">取消</button>
+        <button class="button primary" id="parseImportBtn" value="default">解析并填入</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status"></div>
+  <script src="vendor/html2canvas.min.js"></script>
+  <script src="teacher-panel.js?v=20260626b"></script>
+</body>
+</html>

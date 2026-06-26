@@ -503,7 +503,16 @@ async function handleApi(req, res, url) {
 }
 
 async function serveStatic(req, res, url) {
-  const requested = url.pathname === "/" ? "/index.html" : decodeURIComponent(url.pathname);
+  if (url.pathname === "/teacher-call-panel/") {
+    res.writeHead(308, { Location: "/teacher-call-panel" });
+    res.end();
+    return;
+  }
+  const requested = url.pathname === "/"
+    ? "/index.html"
+    : url.pathname === "/teacher-call-panel"
+      ? "/主讲外呼看板.html"
+      : decodeURIComponent(url.pathname);
   const filePath = path.normalize(path.join(ROOT, requested));
   if (!filePath.startsWith(ROOT)) {
     sendText(res, 403, "Forbidden");

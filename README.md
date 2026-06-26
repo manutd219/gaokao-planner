@@ -23,6 +23,12 @@ npm start
 http://127.0.0.1:4173/index.html
 ```
 
+主讲外呼看板独立页面：
+
+```text
+http://127.0.0.1:4173/teacher-call-panel
+```
+
 本地默认测试账号：
 
 ```text
@@ -90,4 +96,9 @@ RECORDS_FILE=/data/records.json
 
 ## 后续更新内容
 
-后续如果要更新报告话术、地区规则、销售话术、页面样式，只需要改 `index.html`。已经保存的咨询记录不会受影响。
+后续如果要更新报告话术、地区规则、销售话术、页面样式，只需要改对应前端文件。已经保存的咨询记录不会受影响。
+
+- 主站入口：`index.html`
+- 主讲外呼看板：`主讲外呼看板.html`
+- 主讲外呼看板样式：`teacher-panel.css`
+- 主讲外呼看板逻辑：`teacher-panel.js`
