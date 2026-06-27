@@ -706,6 +706,16 @@
     return `${region}高一衔接建议先看校内排名变化和${subject}承接情况。${knowledge.transition}`;
   }
 
+  function buildFollowupSuggestion(student, subject) {
+    const parts = [];
+    if (student.actions?.length) parts.push(`已约定：${student.actions.join("、")}`);
+    if (student.actionDate) parts.push(`完成时间：${student.actionDate}`);
+    if (student.followupDate) parts.push(`下次沟通：${student.followupDate}`);
+    if (student.callSignals?.includes("已约下次沟通") && !student.followupDate) parts.push("已约下次沟通，具体时间待确认");
+    if (parts.length) return `${parts.join("；")}。建议明确由学管做提醒，主讲根据典型错题或课堂反馈校准后续重点。`;
+    return "";
+  }
+
   function renderParentReport(student) {
     if (!$("#parentReportCard")) return;
     const subject = inferPrimarySubject(student);
@@ -716,37 +726,41 @@
     const selected = manualLabels.length ? manualLabels : inferredLabelsFromText(student, subject);
     const localContext = shortLocalReportAdvice(student, subject, knowledge);
     const coreIssue = selected.length
-      ? `${subject}当前重点观察`
-      : `${subject}当前先看基础体系、题型方法和应用发挥`;
+      ? selected.slice(0, 4).join("、")
+      : `${subject}基础体系、题型方法、应用发挥待确认`;
     const mainJudgement = selected.length
-      ? `${student.name || "孩子"}在${subject}上建议优先确认“${selected.slice(0, 3).join("、")}”。先用错题和限时任务复核，再确定后续学习重点。`
-      : `${student.name || "孩子"}当前${subject}信息还需补充。建议先核准成绩口径和典型错题，再判断后续学习重点。`;
+      ? `${student.name || "孩子"}当前${subject}建议先按“${selected.slice(0, 3).join("、")}”做水平评估。${localContext} 先用典型错题或课堂反馈复核，再确定从基础回补、方法训练还是衔接预习开始。`
+      : `${student.name || "孩子"}当前${subject}信息还需补充。建议先核准成绩口径、典型错题和课堂反馈，再判断是先补基础、练方法，还是进入新高一衔接。${localContext}`;
 
     setReportField(student, "eyebrow", "领世精品小班 · 主讲诊断反馈");
     setReportField(student, "title", `${student.name || "学生"}学科诊断反馈`);
     setReportField(student, "subtitle", `${student.region || "地区待补充"}｜面向新高一初高衔接的主讲诊断建议`);
     setReportField(student, "subjectBadge", subject);
-    setReportField(student, "regionLabel", "地区学情");
-    setReportField(student, "region", softenParentText(localContext));
+    setReportField(student, "regionLabel", "所在地区");
+    setReportField(student, "region", softenParentText(student.region || "地区待补充"));
     if ($("#reportSubject")) $("#reportSubject").textContent = subject;
     if ($("#reportScore")) $("#reportScore").textContent = softenParentText(pickReportText(subjectScore, `${subject}成绩待核实`, 58));
-    setReportField(student, "judgementLabel", "主讲综合判断");
-    setReportField(student, "mainJudgement", softenParentText(pickReportText(mainJudgement, "", 140)));
-    setReportField(student, "coreLabel", "01 个性化问题定位");
+    setReportField(student, "judgementLabel", "学情水平评估");
+    setReportField(student, "mainJudgement", softenParentText(pickReportText(mainJudgement, "", 230)));
+    setReportField(student, "coreLabel", "01 具体学科问题");
     setReportField(student, "coreIssue", softenParentText(coreIssue));
     setReportField(student, "coreEvidence", softenParentText(pickReportText(
       selected.length
-        ? `本次优先看：${selected.slice(0, 4).join("、")}。${student.teacherFocus || student.diagnosisFocus || ""}`
+        ? `${student.teacherFocus || student.diagnosisFocus || "建议结合一张典型错题或一次课堂反馈确认真实卡点。"}`
         : (student.teacherFocus || student.diagnosisFocus || student.learningState),
-      "建议用典型错题、最近成绩和限时任务验证。",
-      220
+      "建议用典型错题、最近成绩和课堂反馈验证。",
+      120
     )));
-    setReportField(student, "reasonsLabel", "02 底层原因参考");
+    setReportField(student, "reasonsLabel", "02 关键问题拆解");
     setReportField(student, "reasons", parentList(enrichReportReasons(dynamic.reasons, subject), 5, 180), "html");
-    setReportField(student, "transitionLabel", "03 当地学情与衔接提醒");
-    setReportField(student, "transition", softenParentText(localContext));
-    setReportField(student, "actionsLabel", "04 7天验证动作");
-    setReportField(student, "actions", parentList(enrichReportActions(dynamic.actions, subject), 5, 180), "html");
+    setReportField(student, "actionsLabel", "03 暑假学习建议");
+    setReportField(student, "actions", parentList(enrichReportActions(dynamic.actions, subject), 4, 180), "html");
+    const followupText = buildFollowupSuggestion(student, subject);
+    const hasFollowupOverride = Object.prototype.hasOwnProperty.call(student.reportOverrides || {}, "followup");
+    const followupSection = $("#reportFollowup")?.closest(".report-section");
+    if (followupSection) followupSection.classList.toggle("is-hidden", !followupText && !hasFollowupOverride);
+    setReportField(student, "followupLabel", "04 后续跟进建议（选填）");
+    setReportField(student, "followup", softenParentText(followupText));
     setReportField(student, "footerBrand", "领世精品小班");
     setReportField(student, "footerNote", "本反馈基于当前沟通信息生成，后续会结合题目诊断和课堂反馈继续校准。");
   }

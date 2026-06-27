@@ -924,11 +924,26 @@ input:focus, textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 3px r
   border-left: 0;
 }
 
+.report-section.followup {
+  border-left: 0;
+  background: linear-gradient(145deg, #f8fbff, #fff);
+}
+
+.report-section.is-hidden {
+  display: none;
+}
+
 .report-section h3 {
   margin-bottom: 8px;
   color: #14213b;
   font-size: 17px;
   line-height: 1.38;
+}
+
+.compact-report-line {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .report-section p,
