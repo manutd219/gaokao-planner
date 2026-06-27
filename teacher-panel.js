@@ -215,6 +215,17 @@
     saveTimer = setTimeout(() => { node.textContent = "本地自动保存"; }, 1500);
   }
 
+  function clearAllData() {
+    const blank = newStudent("");
+    state = { students: [blank], currentId: blank.id };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    if ($("#importText")) $("#importText").value = "";
+    if ($("#importDialog")?.open) $("#importDialog").close();
+    renderCurrentStudent();
+    showToast("已清空，可重新粘贴销售摘要");
+    persist("已清空重置");
+  }
+
   function escapeHtml(value) {
     return String(value ?? "")
       .replaceAll("&", "&amp;")
@@ -938,10 +949,7 @@
       parseSalesSummary(text);
       $("#importDialog").close();
     });
-    $("#loadDemoBtn").addEventListener("click", () => {
-      $("#importText").value = demoSummary;
-      parseSalesSummary(demoSummary);
-    });
+    $("#loadDemoBtn").addEventListener("click", clearAllData);
     $$(".phase-tab").forEach((button) => button.addEventListener("click", () => {
       $$(".phase-tab").forEach((tab) => tab.classList.toggle("active", tab === button));
       $$(".phase-panel").forEach((panel) => panel.classList.toggle("active", panel.dataset.phasePanel === button.dataset.phase));
