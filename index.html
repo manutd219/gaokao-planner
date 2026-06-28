@@ -734,6 +734,156 @@
       line-height: 1.45;
     }
 
+    .dashboard-stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(150px, 1fr));
+      gap: 10px;
+      margin: 14px 0;
+    }
+
+    .dashboard-stat {
+      padding: 12px;
+      border: 1px solid var(--line);
+      background: #f8fafc;
+    }
+
+    .dashboard-stat span {
+      display: block;
+      color: #667085;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .dashboard-stat strong {
+      display: block;
+      margin-top: 4px;
+      color: var(--ink);
+      font-size: 24px;
+      line-height: 1.1;
+    }
+
+    .user-dashboard-table {
+      min-width: 1180px;
+      font-size: 14px;
+    }
+
+    .user-dashboard-table tr.priority-a td:first-child {
+      border-left: 4px solid #dc2626;
+    }
+
+    .user-dashboard-table tr.priority-b td:first-child {
+      border-left: 4px solid #f59e0b;
+    }
+
+    .user-dashboard-table tr.priority-pending td:first-child {
+      border-left: 4px solid #94a3b8;
+    }
+
+    .student-cell strong {
+      display: block;
+      color: var(--ink);
+      font-size: 17px;
+      margin-bottom: 6px;
+    }
+
+    .cell-muted {
+      color: #667085;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .tier-badge,
+    .gap-badge,
+    .subject-badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      margin: 0 6px 6px 0;
+      padding: 2px 9px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .tier-badge {
+      color: #334155;
+      border: 1px solid #cbd5e1;
+      background: #f8fafc;
+    }
+
+    .tier-badge.priority-a {
+      color: #991b1b;
+      border-color: #fecaca;
+      background: #fef2f2;
+    }
+
+    .tier-badge.priority-b {
+      color: #92400e;
+      border-color: #fed7aa;
+      background: #fff7ed;
+    }
+
+    .tier-badge.priority-c {
+      color: #1e40af;
+      border-color: #bfdbfe;
+      background: #eff6ff;
+    }
+
+    .tier-badge.priority-d,
+    .tier-badge.priority-pending {
+      color: #475569;
+      border-color: #cbd5e1;
+      background: #f1f5f9;
+    }
+
+    .gap-badge {
+      color: #9a3412;
+      border: 1px solid #fed7aa;
+      background: #fff7ed;
+    }
+
+    .gap-badge.ok {
+      color: #166534;
+      border-color: #bbf7d0;
+      background: #f0fdf4;
+    }
+
+    .subject-badge {
+      color: #1e3a8a;
+      border: 1px solid #bfdbfe;
+      background: #eff6ff;
+    }
+
+    .owner-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 4px 0;
+      border-bottom: 1px dashed #e2e8f0;
+    }
+
+    .owner-line:last-child {
+      border-bottom: 0;
+    }
+
+    .owner-line span:first-child {
+      color: #667085;
+      font-weight: 800;
+    }
+
+    .dashboard-actions {
+      display: grid;
+      gap: 8px;
+      min-width: 140px;
+    }
+
+    .dashboard-actions .btn {
+      min-height: 34px;
+      padding: 0 10px;
+      font-size: 13px;
+    }
+
     .record-notes {
       max-width: 260px;
       white-space: nowrap;
@@ -1225,6 +1375,7 @@
       .auth-form,
       .lookup-search,
       .record-picker,
+      .dashboard-stats,
       .level-explain {
         grid-template-columns: 1fr;
       }
@@ -1750,12 +1901,18 @@
               </select>
             </label>
           </div>
+          <div class="dashboard-stats" id="userDashboardStats">
+            <div class="dashboard-stat"><span>当前学生</span><strong>0</strong></div>
+            <div class="dashboard-stat"><span>A/B 类</span><strong>0</strong></div>
+            <div class="dashboard-stat"><span>未分配主讲</span><strong>0</strong></div>
+            <div class="dashboard-stat"><span>主讲未跟进</span><strong>0</strong></div>
+          </div>
           <div class="records-table-wrap">
-            <table class="records-table">
+            <table class="records-table user-dashboard-table">
               <thead>
-                <tr><th>更新时间</th><th>学生</th><th>地区</th><th>销售/主讲</th><th>客户分层</th><th>跟踪学科</th><th>记录数</th><th>高考层次</th><th>销售摘要</th><th>主讲诊断</th></tr>
+                <tr><th>学生与优先级</th><th>责任人与进度</th><th>学情重点</th><th>信息缺口</th><th>操作</th></tr>
               </thead>
-              <tbody id="userDashboardBody"><tr><td colspan="10">暂无用户汇总数据。</td></tr></tbody>
+              <tbody id="userDashboardBody"><tr><td colspan="5">暂无用户汇总数据。</td></tr></tbody>
             </table>
           </div>
         </section>
@@ -3769,31 +3926,94 @@
         .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
     }
 
+    function dashboardTierClass(row) {
+      const tier = String(row.customerTier || "pending").toLowerCase();
+      return ["a", "b", "c", "d"].includes(tier) ? `priority-${tier}` : "priority-pending";
+    }
+
+    function dashboardTierText(row) {
+      return row.customerLevel || "待判断：信息不足";
+    }
+
+    function dashboardMissingItems(row) {
+      const gaps = [];
+      if (!row.salesOwner?.username) gaps.push("缺销售");
+      if (!row.teacherOwner?.username) gaps.push("未分配主讲");
+      if (!Number(row.planningCount)) gaps.push("缺规划");
+      if (!Number(row.salesCount)) gaps.push("缺销售记录");
+      if (!Number(row.teacherCount)) gaps.push("主讲未跟进");
+      if (!row.trackedSubjects?.length) gaps.push("缺跟踪学科");
+      if (!row.salesSummary) gaps.push("缺销售摘要");
+      if (!row.teacherReport && !row.teacherSummary) gaps.push("缺主讲诊断");
+      return [...new Set(gaps)];
+    }
+
+    function renderDashboardStats(rows) {
+      const node = $("#userDashboardStats");
+      if (!node) return;
+      const hotCount = rows.filter((row) => ["A", "B"].includes(row.customerTier)).length;
+      const noTeacher = rows.filter((row) => !row.teacherOwner?.username).length;
+      const noTeacherRecord = rows.filter((row) => !Number(row.teacherCount)).length;
+      node.innerHTML = `
+        <div class="dashboard-stat"><span>当前学生</span><strong>${escapeHtml(rows.length)}</strong></div>
+        <div class="dashboard-stat"><span>A/B 类</span><strong>${escapeHtml(hotCount)}</strong></div>
+        <div class="dashboard-stat"><span>未分配主讲</span><strong>${escapeHtml(noTeacher)}</strong></div>
+        <div class="dashboard-stat"><span>主讲未跟进</span><strong>${escapeHtml(noTeacherRecord)}</strong></div>
+      `;
+    }
+
+    function openDashboardStudent(name) {
+      const input = $("#userLookupInput");
+      if (!input) return;
+      input.value = name || "";
+      showView("lookup");
+      renderLookupResult();
+    }
+
     function renderUserDashboard() {
       const body = $("#userDashboardBody");
       if (!body) return;
       if (currentUser?.role !== "admin") {
-        body.innerHTML = `<tr><td colspan="10">只有管理员可以查看用户数据看板。</td></tr>`;
+        body.innerHTML = `<tr><td colspan="5">只有管理员可以查看用户数据看板。</td></tr>`;
         return;
       }
       renderDashboardOwnerFilters();
       const rows = filteredUserDashboardRows();
       const summary = $("#userDashboardSummary");
       if (summary) summary.textContent = `当前筛选 ${rows.length} 名学生；汇总规划、销售外呼和主讲沟通记录。`;
+      renderDashboardStats(rows);
       body.innerHTML = rows.length ? rows.map((row) => `
-        <tr>
-          <td>${escapeHtml(formatTime(row.updatedAt))}</td>
-          <td><strong>${escapeHtml(row.studentName || "-")}</strong><br><span class="status-text">总分 ${escapeHtml(row.totalScore || "-")}</span></td>
-          <td>${escapeHtml([row.province, row.city].filter(Boolean).join(" ") || "-")}</td>
-          <td>销售：${escapeHtml(row.salesOwner?.username || "-")}<br>主讲：${escapeHtml(row.teacherOwner?.username || "-")}</td>
-          <td>${escapeHtml(row.customerLevel || "-")}</td>
-          <td>${escapeHtml(row.trackedSubjects?.join("、") || "-")}</td>
-          <td>规划 ${escapeHtml(row.planningCount)}<br>销售 ${escapeHtml(row.salesCount)}<br>主讲 ${escapeHtml(row.teacherCount)}</td>
-          <td>${escapeHtml(row.gaokaoLevel || "-")}<br><span class="status-text">${escapeHtml(row.summerFocus || "")}</span></td>
-          <td><details class="summary-details"><summary>查看摘要</summary><pre>${escapeHtml(row.salesSummary || "暂无销售摘要")}</pre></details></td>
-          <td><details class="summary-details"><summary>查看诊断</summary><pre>${escapeHtml(row.teacherReport || row.teacherSummary || "暂无主讲诊断")}</pre></details></td>
+        <tr class="${escapeHtml(dashboardTierClass(row))}">
+          <td class="student-cell">
+            <strong>${escapeHtml(row.studentName || "-")}</strong>
+            <span class="tier-badge ${escapeHtml(dashboardTierClass(row))}">${escapeHtml(dashboardTierText(row))}</span>
+            <div class="cell-muted">${escapeHtml([row.province, row.city].filter(Boolean).join(" ") || "地区未填")}</div>
+            <div class="cell-muted">最近更新：${escapeHtml(formatTime(row.updatedAt))}</div>
+          </td>
+          <td>
+            <div class="owner-line"><span>销售</span><strong>${escapeHtml(row.salesOwner?.username || "未分配")}</strong></div>
+            <div class="owner-line"><span>主讲</span><strong>${escapeHtml(row.teacherOwner?.username || "未分配")}</strong></div>
+            <div class="cell-muted">规划 ${escapeHtml(row.planningCount)}｜销售 ${escapeHtml(row.salesCount)}｜主讲 ${escapeHtml(row.teacherCount)}</div>
+          </td>
+          <td>
+            <div>${(row.trackedSubjects?.length ? row.trackedSubjects : ["跟踪学科未填"]).map((subject) => `<span class="subject-badge">${escapeHtml(subject)}</span>`).join("")}</div>
+            <div><strong>高考层次：</strong>${escapeHtml(row.gaokaoLevel || "待确认")}</div>
+            <div class="cell-muted"><strong>总分：</strong>${escapeHtml(row.totalScore || "-")}；<strong>暑假重点：</strong>${escapeHtml(row.summerFocus || "-")}</div>
+          </td>
+          <td>
+            ${dashboardMissingItems(row).length
+              ? dashboardMissingItems(row).slice(0, 6).map((item) => `<span class="gap-badge">${escapeHtml(item)}</span>`).join("")
+              : `<span class="gap-badge ok">关键信息较完整</span>`}
+          </td>
+          <td>
+            <div class="dashboard-actions">
+              <button class="btn btn-primary" type="button" data-dashboard-lookup="${escapeHtml(row.studentName || "")}">查详情</button>
+              <details class="summary-details"><summary>销售摘要</summary><pre>${escapeHtml(row.salesSummary || "暂无销售摘要")}</pre></details>
+              <details class="summary-details"><summary>主讲诊断</summary><pre>${escapeHtml(row.teacherReport || row.teacherSummary || "暂无主讲诊断")}</pre></details>
+            </div>
+          </td>
         </tr>
-      `).join("") : `<tr><td colspan="10">暂无符合筛选条件的用户数据。</td></tr>`;
+      `).join("") : `<tr><td colspan="5">暂无符合筛选条件的用户数据。</td></tr>`;
     }
 
     async function loadUserDashboard() {
@@ -3967,6 +4187,11 @@
     document.querySelector("#dashboardSalesFilter").addEventListener("change", renderUserDashboard);
     document.querySelector("#dashboardTeacherFilter").addEventListener("change", renderUserDashboard);
     document.querySelector("#dashboardTierFilter").addEventListener("change", renderUserDashboard);
+    document.querySelector("#userDashboardBody").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-dashboard-lookup]");
+      if (!button) return;
+      openDashboardStudent(button.dataset.dashboardLookup || "");
+    });
     document.querySelectorAll(".nav-button").forEach((button) => {
       button.addEventListener("click", () => {
         render();
