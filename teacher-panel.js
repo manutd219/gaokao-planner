@@ -8,6 +8,27 @@
     document.body.classList.add("embedded-in-main");
   }
 
+  function authToken() {
+    try {
+      return window.localStorage.getItem("gaokao_planner_token") || "";
+    } catch {
+      return "";
+    }
+  }
+
+  async function apiFetch(path, options = {}) {
+    const headers = {
+      "Content-Type": "application/json",
+      ...(options.headers || {})
+    };
+    const token = authToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const response = await fetch(path, { ...options, headers });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || "操作失败，请稍后再试");
+    return payload;
+  }
+
   const SUBJECT_KNOWLEDGE = {
     数学: {
       transition: "新高一数学从初中“题型模仿”转向“抽象表达 + 综合迁移”，重点看计算稳定性、函数方程意识和步骤表达。",
@@ -808,7 +829,7 @@
     if ($("#parentQuote")) $("#parentQuote").value = student.parentQuote || "";
     $("#rawSalesSummary").value = student.rawSalesSummary || "";
     $("#callNotes").value = student.callNotes || "";
-    $("#teacherSummary").value = student.teacherSummary || "";
+    refreshTeacherSummary(student);
     $("#actionDate").value = student.actionDate || "";
     $("#followupDate").value = student.followupDate || "";
     syncVerifyFields(student);
@@ -820,6 +841,7 @@
     renderAssistant(student);
     renderIntent(student);
     renderParentReport(student);
+    refreshTeacherSummary(student);
   }
 
   function readCurrentStudent(sourceId = "") {
@@ -903,15 +925,120 @@
     showToast("销售摘要已解析并填入");
   }
 
-  function generateSummary() {
+  function diagnosisReportText() {
+    const report = $("#parentReportCard");
+    return report ? report.innerText.trim() : "";
+  }
+
+  function buildTeacherRecordPayload(student = currentStudent()) {
+    const subject = inferPrimarySubject(student);
+    const intent = assessIntent(student);
+    return {
+      status: "已沟通",
+      studentName: student.name || "",
+      teacher: {
+        studentName: student.name || "",
+        region: student.region || "",
+        subject,
+        audience: student.teacherAudience || "",
+        focus: student.teacherFocus || student.diagnosisFocus || "",
+        target: student.target || "",
+        scoreSummary: student.scoreSummary || "",
+        learningState: student.learningState || "",
+        tags: student.tags || [],
+        subjectTags: student.subjectTags || [],
+        actions: student.actions || [],
+        callSignals: student.callSignals || [],
+        intent: `${intent.score}%（${intent.level}）`,
+        summary: student.teacherSummary || buildTeacherSummaryText(student),
+        callNotes: student.callNotes || "",
+        actionDate: student.actionDate || "",
+        followupDate: student.followupDate || ""
+      },
+      report: {
+        diagnosis: diagnosisReportText(),
+        title: `${student.name || "学生"}学科诊断反馈`
+      },
+      sourceSalesCallId: student.sourceSalesCallId || "",
+      sourceSalesCall: student.sourceSalesCall || null
+    };
+  }
+
+  async function saveTeacherRecord(options = {}) {
     readCurrentStudent();
     const student = currentStudent();
+    refreshTeacherSummary(student);
+    if (!student.name || student.name === "未命名学生") {
+      if (!options.silent) showToast("请先填写学生姓名");
+      throw new Error("请先填写学生姓名");
+    }
+    const payload = await apiFetch("/api/teacher-calls", {
+      method: "POST",
+      body: JSON.stringify(buildTeacherRecordPayload(student))
+    });
+    persist("已保存到后台");
+    if (!options.silent) showToast("主讲记录已保存");
+    notifyParent("已保存到后台");
+    return payload.record;
+  }
+
+  function loadFromStudentProfile(profile) {
+    const salesCall = profile?.salesCalls?.[0] || null;
+    const teacherCall = profile?.teacherCalls?.[0] || null;
+    const planning = profile?.planning?.[0] || null;
+    const student = currentStudent();
+    if (salesCall?.analysis?.report) {
+      parseSalesSummary(salesCall.analysis.report);
+    } else if (salesCall?.call) {
+      const call = salesCall.call;
+      student.name = call.studentName || profile.name || student.name;
+      student.region = [call.province, call.city, call.district].filter(Boolean).join(" ");
+      student.target = call.school || call.pathway || "";
+      student.teacherAudience = call.teacherTarget || call.decision || student.teacherAudience;
+      student.teacherFocus = call.teacherFocus || student.teacherFocus;
+      student.scoreSummary = [
+        call.scores?.total ? `总分：${call.scores.total}` : "",
+        ...Object.entries(call.scores || {})
+          .filter(([key, value]) => key !== "total" && value)
+          .map(([key, value]) => `${key}：${value}`)
+      ].filter(Boolean).join("；");
+      student.learningState = [
+        call.problems?.length ? `孩子问题：${call.problems.join("、")}` : "",
+        call.subjects?.length ? `重点学科：${call.subjects.join("、")}` : "",
+        call.notes || "",
+        call.quotes || ""
+      ].filter(Boolean).join("\n");
+    } else if (planning?.form) {
+      student.name = planning.form.name || profile.name || student.name;
+      student.region = [planning.form.province, planning.form.city].filter(Boolean).join(" ");
+      student.target = planning.form.school || planning.analysis?.gaokaoLevel || "";
+      student.scoreSummary = planning.analysis?.total ? `中考估算总分：${planning.analysis.total}/${planning.analysis.totalMax || ""}` : planning.form.totalManual || "";
+      student.learningState = planning.form.notes || planning.analysis?.subjectInsight || "";
+    } else {
+      student.name = profile?.name || student.name;
+    }
+    if (teacherCall?.teacher) {
+      student.callNotes = teacherCall.teacher.callNotes || student.callNotes;
+      student.teacherFocus = teacherCall.teacher.focus || student.teacherFocus;
+      student.teacherAudience = teacherCall.teacher.audience || student.teacherAudience;
+      student.actionDate = teacherCall.teacher.actionDate || student.actionDate;
+      student.followupDate = teacherCall.teacher.followupDate || student.followupDate;
+    }
+    student.sourceSalesCallId = salesCall?.id || "";
+    student.sourceSalesCall = salesCall;
+    resetReportOverrides(student);
+    persist("学生记录已调入");
+    renderCurrentStudent();
+    showToast("学生记录已调入");
+  }
+
+  function buildTeacherSummaryText(student) {
     const subject = inferPrimarySubject(student);
     const dynamic = dynamicReasonActions(student, subject);
     const intent = assessIntent(student);
     const selected = selectedLabelsForSubject(student, subject);
     const subjectScore = student.subjectScores?.[subject] || inferSubjectScoreHint(student, subject);
-    const lines = [
+    return [
       `【主讲外呼记录｜${student.name}】`,
       "",
       `一、结论`,
@@ -936,11 +1063,26 @@
       `- 约定动作：${student.actions.length ? student.actions.join("、") : "待约定"}`,
       `- 完成时间：${student.actionDate || "待定"}；下次沟通：${student.followupDate || "待定"}`,
       `- 通话笔记：${student.callNotes || "待记录"}`
-    ];
-    student.teacherSummary = lines.join("\n");
+    ].join("\n");
+  }
+
+  function refreshTeacherSummary(student = currentStudent()) {
+    if (!student) return;
+    student.teacherSummary = buildTeacherSummaryText(student);
     $("#teacherSummary").value = student.teacherSummary;
-    persist("记录已生成");
-    showToast("主讲沟通记录已生成");
+  }
+
+  function generateDiagnosisReport() {
+    readCurrentStudent();
+    const student = currentStudent();
+    refreshTeacherSummary(student);
+    renderDiagnostics(student);
+    renderAssistant(student);
+    renderIntent(student);
+    renderParentReport(student);
+    persist("诊断报告已更新");
+    saveTeacherRecord({ silent: true }).catch(() => {});
+    showToast("诊断报告已更新");
   }
 
   async function copyText(text, message) {
@@ -1028,6 +1170,7 @@
       renderAssistant(currentStudent());
       renderIntent(currentStudent());
       renderParentReport(currentStudent());
+      if (id !== "teacherSummary") refreshTeacherSummary(currentStudent());
     }));
     $$('[data-check]').forEach((input) => input.addEventListener("change", () => {
       readCurrentStudent();
@@ -1036,9 +1179,14 @@
     }));
     $$('[data-edit-target]').forEach((button) => button.addEventListener("click", () => $("#" + button.dataset.editTarget).focus()));
 
-    $("#saveBtn").addEventListener("click", () => { readCurrentStudent(); persist("已保存"); showToast("记录已保存到本机"); });
-    $("#generateSummaryBtn").addEventListener("click", generateSummary);
-    $("#copySummaryBtn").addEventListener("click", () => copyText($("#teacherSummary").value, "主讲记录已复制"));
+    $("#saveBtn").addEventListener("click", () => saveTeacherRecord());
+    $("#generateSummaryBtn").addEventListener("click", generateDiagnosisReport);
+    $("#copySummaryBtn").addEventListener("click", async () => {
+      readCurrentStudent();
+      refreshTeacherSummary(currentStudent());
+      await saveTeacherRecord({ silent: true }).catch(() => {});
+      copyText($("#teacherSummary").value, "主讲记录已复制");
+    });
     $("#downloadReportBtn")?.addEventListener("click", downloadParentReport);
   }
 
@@ -1060,10 +1208,14 @@
       notifyParent("已清空重置");
     },
     save() {
-      readCurrentStudent();
-      persist("已保存");
-      showToast("记录已保存到本机");
-      notifyParent("已保存");
+      saveTeacherRecord().catch((error) => {
+        showToast(error.message);
+        notifyParent(error.message);
+      });
+    },
+    loadStudentProfile(profile) {
+      loadFromStudentProfile(profile);
+      notifyParent("学生记录已调入");
     },
     getState() {
       const student = currentStudent();

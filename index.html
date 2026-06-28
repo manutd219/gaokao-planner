@@ -425,6 +425,17 @@
       white-space: nowrap;
     }
 
+    .teacher-lookup-input {
+      width: 150px;
+      min-height: 38px;
+      padding: 0 12px;
+      border: 1px solid #d9e0e9;
+      border-radius: 10px;
+      background: #ffffff;
+      color: var(--ink);
+      font-weight: 700;
+    }
+
     body[data-view="teacher"] .teacher-top-controls {
       display: flex;
     }
@@ -771,6 +782,39 @@
       color: #40506a;
       background: #f8fafc;
       line-height: 1.6;
+    }
+
+    .lookup-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 12px;
+    }
+
+    .lookup-card {
+      padding: 14px;
+      border: 1px solid #d8e0ec;
+      background: #ffffff;
+    }
+
+    .lookup-card h3 {
+      margin-bottom: 8px;
+      color: var(--ink);
+      font-size: 16px;
+    }
+
+    .lookup-card pre {
+      margin-top: 8px;
+      white-space: pre-wrap;
+      color: #40506a;
+      font-family: inherit;
+      line-height: 1.6;
+    }
+
+    .lookup-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 10px;
     }
 
     .record-picker {
@@ -1212,7 +1256,7 @@
       </form>
       <div class="auth-status">
         <strong id="loginState">未登录</strong>
-        <span id="loginHint">测试账号：sales / sales123；管理员：admin / admin123</span>
+        <span id="loginHint">测试账号：sales / sales123；teacher / teacher123；管理员：admin / admin123</span>
       </div>
     </div>
   </section>
@@ -1345,6 +1389,8 @@
               <button type="button" data-teacher-subject="英语">英语</button>
               <button type="button" data-teacher-subject="化学">化学</button>
             </div>
+            <input class="teacher-lookup-input" id="teacherLookupNameTop" placeholder="输入学生姓名" />
+            <button class="btn btn-secondary" id="teacherLookupTop" type="button">查询学生</button>
             <button class="btn btn-primary" id="teacherImportTop" type="button">粘贴销售摘要</button>
             <span class="teacher-save-state" id="teacherSaveStateTop">本地自动保存</span>
             <button class="btn btn-secondary" id="teacherResetTop" type="button">清空重置</button>
@@ -1380,7 +1426,7 @@
         <div class="lookup-box">
           <div>
             <h2>用户查询</h2>
-            <p class="status-text">输入学生姓名，系统会调用当前账号最近一次查询记录。管理员可查全部，销售只查自己的记录。</p>
+            <p class="status-text">输入学生姓名，系统会调出该学生的规划、销售沟通和主讲沟通记录。</p>
           </div>
           <div class="lookup-search">
             <input id="userLookupInput" placeholder="输入学生姓名，如：陈同学" />
@@ -1487,7 +1533,7 @@
       </section>
 
       <section class="teacher-panel-view view-panel" id="teacherView">
-        <iframe class="teacher-frame" id="teacherFrame" src="主讲外呼看板.html?v=20260628a" title="主讲外呼看板"></iframe>
+        <iframe class="teacher-frame" id="teacherFrame" src="主讲外呼看板.html?v=20260628c" title="主讲外呼看板"></iframe>
       </section>
 
       <div class="report-wrap view-panel" id="planView">
@@ -1678,6 +1724,7 @@
         <div class="backend-tabs" role="tablist" aria-label="后台数据分类">
           <button class="backend-tab active" type="button" role="tab" aria-selected="true" data-backend-tab="planning">规划查询数据</button>
           <button class="backend-tab" type="button" role="tab" aria-selected="false" data-backend-tab="calls">销售外呼看板</button>
+          <button class="backend-tab" type="button" role="tab" aria-selected="false" data-backend-tab="teachers">主讲外呼看板</button>
         </div>
 
         <section class="backend-data-panel" data-backend-panel="planning">
@@ -1741,6 +1788,34 @@
             </table>
           </div>
         </section>
+
+        <section class="backend-data-panel" data-backend-panel="teachers" hidden>
+          <div class="backend-head">
+            <div>
+              <h2>主讲外呼看板</h2>
+              <p class="status-text" id="teacherBackendSummary">每名主讲、每名学生只保留最近一次保存的主讲诊断记录。</p>
+            </div>
+            <button class="btn btn-secondary" id="exportTeacherRecordsBtn" type="button">导出主讲数据</button>
+          </div>
+          <div class="backend-tools">
+            <label>主讲账号
+              <select id="teacherUserFilter"><option value="">全部主讲</option></select>
+            </label>
+            <label>主讲学科
+              <select id="teacherSubjectFilter">
+                <option value="">全部学科</option><option>数学</option><option>物理</option><option>英语</option><option>化学</option>
+              </select>
+            </label>
+          </div>
+          <div class="records-table-wrap">
+            <table class="records-table">
+              <thead>
+                <tr><th>更新时间</th><th>主讲账号</th><th>学生</th><th>地区</th><th>学科</th><th>沟通对象</th><th>诊断重点</th><th>意向度</th><th>主讲记录</th><th>诊断报告</th></tr>
+              </thead>
+              <tbody id="teacherRecordsBody"><tr><td colspan="10">暂无主讲外呼记录。</td></tr></tbody>
+            </table>
+          </div>
+        </section>
       </section>
     </section>
   </main>
@@ -1763,13 +1838,23 @@
     let currentUser = null;
     let allRecords = [];
     let allCallRecords = [];
+    let allTeacherCallRecords = [];
+    let latestLookupProfile = null;
     let latestAnalysis = null;
     let latestCallContext = null;
     let currentSourceCallId = "";
     let appConfig = {
       demoMode: true,
-      loginHint: "测试账号：sales / sales123；管理员：admin / admin123"
+      loginHint: "测试账号：sales / sales123；teacher / teacher123；管理员：admin / admin123"
     };
+
+    function roleLabel(role) {
+      return role === "admin" ? "管理员" : role === "teacher" ? "主讲" : "销售";
+    }
+
+    function defaultViewForUser(user) {
+      return user?.role === "teacher" ? "teacher" : "call";
+    }
 
     async function apiFetch(path, options = {}) {
       const headers = {
@@ -1855,6 +1940,7 @@
             panel.hidden = panel.dataset.backendPanel !== target;
           });
           if (target === "calls") renderAdminCallRecords();
+          if (target === "teachers") renderAdminTeacherCallRecords();
         });
       });
     }
@@ -1875,7 +1961,7 @@
       if (view === "teacher") syncTeacherTopControls();
       if (["lookup", "plan", "sales"].includes(view) && currentUser) loadRecords();
       if (view === "call" && currentUser) loadCallRecords();
-      if (view === "backend") Promise.all([loadRecords(), loadCallRecords()]);
+      if (view === "backend") Promise.all([loadRecords(), loadCallRecords(), loadTeacherCallRecords()]);
     }
 
     function getTeacherBridge() {
@@ -1910,24 +1996,45 @@
       syncTeacherTopControls();
     }
 
+    async function lookupStudentForTeacher() {
+      const name = ($("#teacherLookupNameTop")?.value || "").trim();
+      if (!name) {
+        setTeacherTopMessage("请先输入学生姓名");
+        return;
+      }
+      const bridge = getTeacherBridge();
+      if (!bridge || typeof bridge.loadStudentProfile !== "function") {
+        setTeacherTopMessage("面板加载中，请稍后再试");
+        return;
+      }
+      try {
+        setTeacherTopMessage("正在查询学生记录...");
+        const profile = await apiFetch(`/api/student-profile?name=${encodeURIComponent(name)}`);
+        bridge.loadStudentProfile(profile);
+        setTeacherTopMessage("学生记录已调入");
+      } catch (error) {
+        setTeacherTopMessage(error.message);
+      }
+    }
+
     function updateAuthUI() {
       const loggedIn = Boolean(currentUser);
       document.body.classList.toggle("logged-in", loggedIn);
       $("#loginState").textContent = loggedIn
-        ? `${currentUser.name}已登录（${currentUser.role === "admin" ? "管理员" : "销售"}）`
+        ? `${currentUser.name}已登录（${roleLabel(currentUser.role)}）`
         : "未登录";
       $("#workspaceUser").textContent = loggedIn
-        ? `${currentUser.name} · ${currentUser.role === "admin" ? "管理员" : "销售"}`
+        ? `${currentUser.name} · ${roleLabel(currentUser.role)}`
         : "未登录";
       $("#sideUserState").textContent = loggedIn
         ? `${currentUser.name}已登录`
         : "登录后开始规划";
       $("#backendNav").hidden = currentUser?.role !== "admin";
       $("#loginHint").textContent = loggedIn
-        ? "登录成功。可在销售外呼面板记录学生信息。"
+        ? "登录成功。可按角色使用对应外呼和查询功能。"
         : appConfig.loginHint;
       if (loggedIn && currentUser.role !== "admin" && $("#backendView").classList.contains("active")) {
-        showView("call");
+        showView(defaultViewForUser(currentUser));
       }
     }
 
@@ -1953,8 +2060,8 @@
         const payload = await apiFetch("/api/me");
         currentUser = payload.user;
         updateAuthUI();
-        showView("call");
-        await Promise.all([loadRecords(), loadCallRecords()]);
+        showView(defaultViewForUser(currentUser));
+        await Promise.all([loadRecords(), loadCallRecords(), loadTeacherCallRecords()]);
       } catch {
         authToken = "";
         currentUser = null;
@@ -3293,31 +3400,86 @@
         || sorted.find((record) => String(record.form?.name || "").toLowerCase().includes(keyword));
     }
 
-    function renderLookupResult() {
+    function renderLookupProfile(profile) {
+      const node = $("#lookupResult");
+      if (!node) return;
+      latestLookupProfile = profile;
+      const planning = profile.planning || [];
+      const salesCalls = profile.salesCalls || [];
+      const teacherCalls = profile.teacherCalls || [];
+      const latestPlan = planning[0];
+      const latestSales = salesCalls[0];
+      const latestTeacher = teacherCalls[0];
+      if (!planning.length && !salesCalls.length && !teacherCalls.length) {
+        node.textContent = `没有找到“${profile.name}”的历史记录。`;
+        return;
+      }
+      const formData = latestPlan?.form || {};
+      const analysis = latestPlan?.analysis || {};
+      const salesCall = latestSales?.call || {};
+      const teacher = latestTeacher?.teacher || {};
+      node.innerHTML = `
+        <strong>${escapeHtml(formData.name || salesCall.studentName || teacher.studentName || profile.name)}</strong>
+        <p>${escapeHtml([formData.province || salesCall.province, formData.city || salesCall.city].filter(Boolean).join(" ") || teacher.region || "地区未记录")}</p>
+        <p>规划记录 ${planning.length} 条；销售沟通 ${salesCalls.length} 条；主讲沟通 ${teacherCalls.length} 条。</p>
+        <p>中考总分：${escapeHtml(analysis.total ? `${analysis.total} / ${analysis.totalMax || "-"}` : (formData.totalManual || salesCall.scores?.total || "-"))}；高考目标层次：${escapeHtml(analysis.gaokaoLevel || "-")}；暑假重点：${escapeHtml(analysis.summerFocus || "-")}</p>
+        <div class="lookup-grid">
+          <section class="lookup-card">
+            <h3>销售与用户沟通记录</h3>
+            <p>最近记录：${escapeHtml(latestSales ? formatTime(latestSales.updatedAt || latestSales.createdAt) : "暂无")}</p>
+            <p>销售：${escapeHtml(latestSales?.owner?.username || "-")}；客户分层：${escapeHtml(latestSales?.analysis?.customerLevel?.label || latestSales?.analysis?.profile || "-")}</p>
+            <pre>${escapeHtml(latestSales?.analysis?.report || salesCall.quotes || "暂无销售学情摘要")}</pre>
+          </section>
+          <section class="lookup-card">
+            <h3>主讲与用户沟通记录</h3>
+            <p>最近记录：${escapeHtml(latestTeacher ? formatTime(latestTeacher.updatedAt || latestTeacher.createdAt) : "暂无")}</p>
+            <p>主讲：${escapeHtml(latestTeacher?.owner?.username || "-")}；学科：${escapeHtml(teacher.subject || "-")}</p>
+            <pre>${escapeHtml(teacher.summary || "暂无主讲沟通记录")}</pre>
+            <pre>${escapeHtml(latestTeacher?.report?.diagnosis || "暂无主讲诊断报告")}</pre>
+          </section>
+        </div>
+        <div class="lookup-actions"><button class="btn btn-secondary" id="exportLookupProfileBtn" type="button">导出该用户信息</button></div>
+      `;
+      $("#exportLookupProfileBtn")?.addEventListener("click", exportLookupProfile);
+    }
+
+    async function renderLookupResult() {
       const node = $("#lookupResult");
       if (!node) return;
       const keyword = ($("#userLookupInput")?.value || "").trim();
+      latestLookupProfile = null;
       if (!keyword) {
-        node.textContent = allRecords.length ? "请输入学生姓名，将优先调用最近一次同名记录。" : "当前账号暂无历史记录。";
+        node.textContent = "请输入学生姓名，将调出规划、销售沟通和主讲沟通记录。";
         return;
       }
-      const record = findLatestRecordByName(keyword);
-      if (!record) {
-        node.textContent = `没有找到“${keyword}”的历史记录。`;
+      if (!currentUser) {
+        node.textContent = "请先登录账号，再查询用户。";
         return;
       }
-      const formData = record.form || {};
-      const analysis = record.analysis || {};
-      node.innerHTML = `
-        <strong>${escapeHtml(formData.name || "未命名学生")}</strong>
-        <p>${escapeHtml([formData.province, formData.city].filter(Boolean).join(" "))} · ${escapeHtml(formatTime(record.createdAt))}</p>
-        <p>中考总分：${escapeHtml(analysis.total ? `${analysis.total} / ${analysis.totalMax || "-"}` : (formData.totalManual || "-"))}；高考目标层次：${escapeHtml(analysis.gaokaoLevel || "-")}；暑假重点：${escapeHtml(analysis.summerFocus || "-")}</p>
-      `;
+      node.textContent = "正在查询历史记录...";
+      try {
+        const profile = await apiFetch(`/api/student-profile?name=${encodeURIComponent(keyword)}`);
+        renderLookupProfile(profile);
+      } catch (error) {
+        node.textContent = error.message;
+      }
     }
 
-    function loadLookupRecord() {
-      const record = findLatestRecordByName($("#userLookupInput").value);
+    async function loadLookupRecord() {
+      if (!latestLookupProfile) await renderLookupResult();
+      const record = latestLookupProfile?.planning?.[0] || findLatestRecordByName($("#userLookupInput").value);
       if (record) loadRecordIntoForm(record, "plan");
+    }
+
+    function exportLookupProfile() {
+      if (!latestLookupProfile) return;
+      const text = JSON.stringify(latestLookupProfile, null, 2);
+      const blob = new Blob([text], { type: "application/json;charset=utf-8" });
+      const link = document.createElement("a");
+      link.download = `${latestLookupProfile.name || "用户"}-完整记录.json`;
+      link.href = URL.createObjectURL(blob);
+      link.click();
+      URL.revokeObjectURL(link.href);
     }
 
     function getFilteredRecords() {
@@ -3423,6 +3585,105 @@
       }
     }
 
+    function teacherRecordSubject(record) {
+      return record.teacher?.subject || "-";
+    }
+
+    function renderTeacherUserFilter() {
+      const select = $("#teacherUserFilter");
+      if (!select) return;
+      const selected = select.value;
+      const owners = new Map();
+      allTeacherCallRecords.forEach((record) => {
+        const username = record.owner?.username;
+        if (username) owners.set(username, record.owner?.name || username);
+      });
+      select.innerHTML = `<option value="">全部主讲</option>${[...owners.entries()]
+        .sort(([a], [b]) => a.localeCompare(b, "zh-CN"))
+        .map(([username, name]) => `<option value="${escapeHtml(username)}">${escapeHtml(username)} · ${escapeHtml(name)}</option>`)
+        .join("")}`;
+      if (owners.has(selected)) select.value = selected;
+    }
+
+    function filteredTeacherCallRecords() {
+      const teacher = $("#teacherUserFilter")?.value || "";
+      const subject = $("#teacherSubjectFilter")?.value || "";
+      return [...allTeacherCallRecords]
+        .filter((record) => !teacher || record.owner?.username === teacher)
+        .filter((record) => !subject || teacherRecordSubject(record) === subject)
+        .sort((a, b) => String(b.updatedAt || b.createdAt).localeCompare(String(a.updatedAt || a.createdAt)));
+    }
+
+    function renderAdminTeacherCallRecords() {
+      const body = $("#teacherRecordsBody");
+      if (!body) return;
+      if (currentUser?.role !== "admin") {
+        body.innerHTML = `<tr><td colspan="10">只有管理员可以查看全部主讲外呼记录。</td></tr>`;
+        return;
+      }
+      renderTeacherUserFilter();
+      const records = filteredTeacherCallRecords();
+      const summary = $("#teacherBackendSummary");
+      if (summary) summary.textContent = `当前筛选 ${records.length} 条；同一主讲、同一学生只保留最新记录。`;
+      body.innerHTML = records.length ? records.map((record) => {
+        const teacher = record.teacher || {};
+        const report = record.report || {};
+        return `<tr>
+          <td>${escapeHtml(formatTime(record.updatedAt || record.createdAt))}</td>
+          <td><strong>${escapeHtml(record.owner?.username || "-")}</strong><br><span class="status-text">${escapeHtml(record.owner?.name || "")}</span></td>
+          <td><strong>${escapeHtml(record.studentName || teacher.studentName || "-")}</strong></td>
+          <td>${escapeHtml(teacher.region || "-")}</td>
+          <td>${escapeHtml(teacher.subject || "-")}</td>
+          <td>${escapeHtml(teacher.audience || "-")}</td>
+          <td>${escapeHtml(teacher.focus || "-")}</td>
+          <td>${escapeHtml(teacher.intent || "-")}</td>
+          <td><details class="summary-details"><summary>查看记录</summary><pre>${escapeHtml(teacher.summary || "暂无主讲记录")}</pre></details></td>
+          <td><details class="summary-details"><summary>查看报告</summary><pre>${escapeHtml(report.diagnosis || "暂无诊断报告")}</pre></details></td>
+        </tr>`;
+      }).join("") : `<tr><td colspan="10">暂无符合筛选条件的主讲外呼记录。</td></tr>`;
+    }
+
+    async function loadTeacherCallRecords() {
+      if (!currentUser) {
+        allTeacherCallRecords = [];
+        renderAdminTeacherCallRecords();
+        return;
+      }
+      try {
+        const payload = await apiFetch("/api/teacher-calls");
+        allTeacherCallRecords = payload.records || [];
+        renderAdminTeacherCallRecords();
+      } catch (error) {
+        setBackendMessage(error.message);
+      }
+    }
+
+    async function exportTeacherCallRecords() {
+      if (!currentUser || currentUser.role !== "admin") {
+        setBackendMessage("只有管理员可以导出主讲外呼数据。");
+        return;
+      }
+      const params = new URLSearchParams();
+      const teacher = $("#teacherUserFilter")?.value || "";
+      const subject = $("#teacherSubjectFilter")?.value || "";
+      if (teacher) params.set("teacher", teacher);
+      if (subject) params.set("subject", subject);
+      try {
+        const response = await fetch(`/api/teacher-calls/export?${params.toString()}`, {
+          headers: { Authorization: `Bearer ${authToken}` }
+        });
+        if (!response.ok) throw new Error("导出失败，请稍后再试");
+        const blob = await response.blob();
+        const link = document.createElement("a");
+        link.download = `主讲外呼记录-${new Date().toISOString().slice(0, 10)}.csv`;
+        link.href = URL.createObjectURL(blob);
+        link.click();
+        URL.revokeObjectURL(link.href);
+      } catch (error) {
+        setBackendMessage(error.message);
+      }
+    }
+
     updateCityOptions("深圳");
     renderScoreFields();
 
@@ -3475,8 +3736,8 @@
         currentUser = payload.user;
         localStorage.setItem("gaokao_planner_token", authToken);
         updateAuthUI();
-        showView("call");
-        await Promise.all([loadRecords(), loadCallRecords()]);
+        showView(defaultViewForUser(currentUser));
+        await Promise.all([loadRecords(), loadCallRecords(), loadTeacherCallRecords()]);
       } catch (error) {
         $("#loginHint").textContent = error.message;
       }
@@ -3490,6 +3751,7 @@
       currentUser = null;
       allRecords = [];
       allCallRecords = [];
+      allTeacherCallRecords = [];
       latestCallContext = null;
       currentSourceCallId = "";
       localStorage.removeItem("gaokao_planner_token");
@@ -3516,6 +3778,10 @@
       });
     });
     document.querySelector("#teacherImportTop").addEventListener("click", () => callTeacherPanel("openImport"));
+    document.querySelector("#teacherLookupTop").addEventListener("click", lookupStudentForTeacher);
+    document.querySelector("#teacherLookupNameTop").addEventListener("keydown", (event) => {
+      if (event.key === "Enter") lookupStudentForTeacher();
+    });
     document.querySelector("#teacherResetTop").addEventListener("click", () => callTeacherPanel("reset"));
     document.querySelector("#teacherSaveTop").addEventListener("click", () => callTeacherPanel("save"));
     document.querySelector("#teacherFrame").addEventListener("load", syncTeacherTopControls);
@@ -3534,10 +3800,13 @@
     document.querySelector("#userLookupInput").addEventListener("keydown", (event) => {
       if (event.key === "Enter") loadLookupRecord();
     });
-    document.querySelector("#refreshRecordsBtn").addEventListener("click", () => Promise.all([loadRecords(), loadCallRecords()]));
+    document.querySelector("#refreshRecordsBtn").addEventListener("click", () => Promise.all([loadRecords(), loadCallRecords(), loadTeacherCallRecords()]));
     document.querySelector("#exportRecordsBtn").addEventListener("click", exportRecords);
+    document.querySelector("#exportTeacherRecordsBtn").addEventListener("click", exportTeacherCallRecords);
     document.querySelector("#recordSearch").addEventListener("input", renderRecords);
     document.querySelector("#recordStatusFilter").addEventListener("change", renderRecords);
+    document.querySelector("#teacherUserFilter").addEventListener("change", renderAdminTeacherCallRecords);
+    document.querySelector("#teacherSubjectFilter").addEventListener("change", renderAdminTeacherCallRecords);
     document.querySelectorAll(".nav-button").forEach((button) => {
       button.addEventListener("click", () => {
         render();

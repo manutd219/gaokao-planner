@@ -7,6 +7,7 @@ const ROOT = __dirname;
 const DATA_DIR = process.env.DATA_DIR || path.join(ROOT, "data");
 const RECORDS_FILE = process.env.RECORDS_FILE || path.join(DATA_DIR, "records.json");
 const CALLS_FILE = process.env.CALLS_FILE || path.join(DATA_DIR, "calls.json");
+const TEACHER_CALLS_FILE = process.env.TEACHER_CALLS_FILE || path.join(DATA_DIR, "teacher-calls.json");
 const PORT = Number(process.env.PORT || 4173);
 const SESSION_TTL_MS = Number(process.env.SESSION_TTL_HOURS || 24) * 60 * 60 * 1000;
 const NODE_ENV = process.env.NODE_ENV || "development";
@@ -65,6 +66,45 @@ function parseSalesUsers() {
     .filter(Boolean);
 }
 
+function parseTeacherUsers() {
+  if (!process.env.TEACHER_USERS) {
+    if (NODE_ENV === "production" && !process.env.TEACHER_USERNAME && !process.env.TEACHER_PASSWORD) return [];
+    return [
+      {
+        username: process.env.TEACHER_USERNAME || "teacher",
+        password: process.env.TEACHER_PASSWORD || "teacher123",
+        name: process.env.TEACHER_NAME || "主讲",
+        role: "teacher"
+      }
+    ];
+  }
+
+  try {
+    const parsed = JSON.parse(process.env.TEACHER_USERS);
+    if (Array.isArray(parsed)) {
+      return parsed
+        .filter((user) => user && user.username && user.password)
+        .map((user) => ({
+          username: String(user.username),
+          password: String(user.password),
+          name: String(user.name || user.username),
+          role: "teacher"
+        }));
+    }
+  } catch {}
+
+  return process.env.TEACHER_USERS.split(";")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((item) => {
+      const [username, password, name] = item.split(":");
+      return username && password
+        ? { username, password, name: name || username, role: "teacher" }
+        : null;
+    })
+    .filter(Boolean);
+}
+
 function getUsers() {
   return [
     {
@@ -73,7 +113,8 @@ function getUsers() {
       name: process.env.ADMIN_NAME || "管理员",
       role: "admin"
     },
-    ...parseSalesUsers()
+    ...parseSalesUsers(),
+    ...parseTeacherUsers()
   ];
 }
 
@@ -81,7 +122,9 @@ function demoMode() {
   return NODE_ENV !== "production"
     && !process.env.ADMIN_PASSWORD
     && !process.env.SALES_USERS
-    && !process.env.SALES_PASSWORD;
+    && !process.env.SALES_PASSWORD
+    && !process.env.TEACHER_USERS
+    && !process.env.TEACHER_PASSWORD;
 }
 
 function sendJson(res, status, payload) {
@@ -150,6 +193,14 @@ async function readCallRecords() {
 
 async function writeCallRecords(records) {
   return writeJsonArray(CALLS_FILE, records);
+}
+
+async function readTeacherCallRecords() {
+  return readJsonArray(TEACHER_CALLS_FILE);
+}
+
+async function writeTeacherCallRecords(records) {
+  return writeJsonArray(TEACHER_CALLS_FILE, records);
 }
 
 function publicUser(user) {
@@ -227,10 +278,46 @@ function sanitizeCallRecord(body, user, existing = null) {
   };
 }
 
+function sanitizeTeacherCallRecord(body, user, existing = null) {
+  const teacher = body.teacher && typeof body.teacher === "object" ? body.teacher : {};
+  const report = body.report && typeof body.report === "object" ? body.report : {};
+  const sourceSalesCall = body.sourceSalesCall && typeof body.sourceSalesCall === "object" ? body.sourceSalesCall : null;
+  const now = new Date().toISOString();
+  const status = String(body.status || existing?.status || "待沟通").trim() || "待沟通";
+  return {
+    id: existing?.id || randomUUID(),
+    createdAt: existing?.createdAt || now,
+    updatedAt: now,
+    owner: publicUser(user),
+    status,
+    studentName: String(teacher.studentName || body.studentName || "").trim(),
+    teacher,
+    report,
+    sourceSalesCallId: String(body.sourceSalesCallId || sourceSalesCall?.id || existing?.sourceSalesCallId || ""),
+    sourceSalesCall
+  };
+}
+
 function visibleRecords(records, user) {
   return user.role === "admin"
     ? records
     : records.filter((record) => record.owner && record.owner.username === user.username);
+}
+
+function visibleTeacherCallRecords(records, user) {
+  return user.role === "admin"
+    ? records
+    : records.filter((record) => record.owner && record.owner.username === user.username);
+}
+
+function normalizeName(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function nameMatches(value, keyword) {
+  const name = normalizeName(value);
+  const query = normalizeName(keyword);
+  return Boolean(query && (name === query || name.includes(query)));
 }
 
 function requireAdmin(req, res) {
@@ -340,6 +427,45 @@ function callsToCsv(records) {
   return rows.map((row) => row.map(csvEscape).join(",")).join("\n");
 }
 
+function teacherCallsToCsv(records) {
+  const rows = [
+    ["更新时间", "主讲账号", "主讲姓名", "学生", "地区", "主讲学科", "沟通对象", "诊断重点", "意向度", "主讲记录", "诊断报告", "来源销售记录", "状态"],
+    ...records.map((record) => {
+      const teacher = record.teacher || {};
+      const report = record.report || {};
+      return [
+        record.updatedAt || record.createdAt,
+        record.owner?.username || "",
+        record.owner?.name || "",
+        record.studentName || teacher.studentName || "",
+        teacher.region || "",
+        teacher.subject || "",
+        teacher.audience || "",
+        teacher.focus || "",
+        teacher.intent || "",
+        teacher.summary || "",
+        report.diagnosis || "",
+        record.sourceSalesCallId || "",
+        record.status || ""
+      ];
+    })
+  ];
+  return rows.map((row) => row.map(csvEscape).join(",")).join("\n");
+}
+
+function findStudentProfiles(name, planningRecords, callRecords, teacherCallRecords) {
+  const planning = planningRecords
+    .filter((record) => nameMatches(record.form?.name, name))
+    .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  const salesCalls = callRecords
+    .filter((record) => nameMatches(record.call?.studentName, name))
+    .sort((a, b) => String(b.updatedAt || b.createdAt).localeCompare(String(a.updatedAt || a.createdAt)));
+  const teacherCalls = teacherCallRecords
+    .filter((record) => nameMatches(record.studentName || record.teacher?.studentName, name))
+    .sort((a, b) => String(b.updatedAt || b.createdAt).localeCompare(String(a.updatedAt || a.createdAt)));
+  return { planning, salesCalls, teacherCalls };
+}
+
 async function handleApi(req, res, url) {
   if (req.method === "GET" && url.pathname === "/api/health") {
     sendJson(res, 200, { ok: true, service: "gaokao-planner", time: new Date().toISOString() });
@@ -350,8 +476,8 @@ async function handleApi(req, res, url) {
     sendJson(res, 200, {
       demoMode: demoMode(),
       loginHint: demoMode()
-        ? "测试账号：sales / sales123；管理员：admin / admin123"
-        : "请输入管理员分配的销售账号。"
+        ? "测试账号：sales / sales123；teacher / teacher123；管理员：admin / admin123"
+        : "请输入管理员分配的账号。"
     });
     return;
   }
@@ -436,6 +562,76 @@ async function handleApi(req, res, url) {
     else records.push(record);
     await writeCallRecords(records);
     sendJson(res, existing ? 200 : 201, { record, updated: Boolean(existing) });
+    return;
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/teacher-calls") {
+    const user = requireUser(req, res);
+    if (!user) return;
+    const records = visibleTeacherCallRecords(await readTeacherCallRecords(), user)
+      .sort((a, b) => String(b.updatedAt || b.createdAt).localeCompare(String(a.updatedAt || a.createdAt)));
+    sendJson(res, 200, { records });
+    return;
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/teacher-calls/export") {
+    const user = requireAdmin(req, res);
+    if (!user) return;
+    const teacher = String(url.searchParams.get("teacher") || "");
+    const subject = String(url.searchParams.get("subject") || "");
+    const records = visibleTeacherCallRecords(await readTeacherCallRecords(), user)
+      .filter((record) => !teacher || record.owner?.username === teacher)
+      .filter((record) => !subject || record.teacher?.subject === subject)
+      .sort((a, b) => String(b.updatedAt || b.createdAt).localeCompare(String(a.updatedAt || a.createdAt)));
+    res.writeHead(200, {
+      "Content-Type": "text/csv; charset=utf-8",
+      "Cache-Control": "no-store",
+      "Content-Disposition": "attachment; filename=teacher-call-records.csv"
+    });
+    res.end(`\uFEFF${teacherCallsToCsv(records)}`);
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/teacher-calls") {
+    const user = requireUser(req, res);
+    if (!user) return;
+    if (!["admin", "teacher"].includes(user.role)) {
+      sendJson(res, 403, { error: "只有主讲或管理员可以保存主讲外呼记录" });
+      return;
+    }
+    const body = await readBody(req);
+    const records = await readTeacherCallRecords();
+    const studentName = String(body.teacher?.studentName || body.studentName || "").trim().toLowerCase();
+    if (!studentName) {
+      sendJson(res, 400, { error: "请先填写学生姓名，再保存主讲记录" });
+      return;
+    }
+    const index = records.findIndex((record) => (
+      record.owner?.username === user.username
+      && String(record.studentName || record.teacher?.studentName || "").trim().toLowerCase() === studentName
+    ));
+    const existing = index >= 0 ? records[index] : null;
+    const record = sanitizeTeacherCallRecord(body, user, existing);
+    if (index >= 0) records[index] = record;
+    else records.push(record);
+    await writeTeacherCallRecords(records);
+    sendJson(res, existing ? 200 : 201, { record, updated: Boolean(existing) });
+    return;
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/student-profile") {
+    const user = requireUser(req, res);
+    if (!user) return;
+    const name = String(url.searchParams.get("name") || "").trim();
+    if (!name) {
+      sendJson(res, 400, { error: "请输入学生姓名" });
+      return;
+    }
+    const planningRecords = await readRecords();
+    const callRecords = await readCallRecords();
+    const teacherCallRecords = await readTeacherCallRecords();
+    const profile = findStudentProfiles(name, planningRecords, callRecords, teacherCallRecords);
+    sendJson(res, 200, { name, ...profile });
     return;
   }
 

@@ -24,6 +24,10 @@ services:
         value: 管理员
       - key: SALES_USERS
         sync: false
+      - key: TEACHER_USERS
+        sync: false
+      - key: TEACHER_CALLS_FILE
+        value: /data/teacher-calls.json
     disk:
       name: records
       mountPath: /data
