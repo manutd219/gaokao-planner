@@ -466,6 +466,100 @@ function findStudentProfiles(name, planningRecords, callRecords, teacherCallReco
   return { planning, salesCalls, teacherCalls };
 }
 
+function latestByTime(records, timeField = "updatedAt") {
+  return [...records].sort((a, b) => String(b[timeField] || b.createdAt).localeCompare(String(a[timeField] || a.createdAt)))[0] || null;
+}
+
+function collectStudentNames(planningRecords, callRecords, teacherCallRecords) {
+  const names = new Set();
+  planningRecords.forEach((record) => {
+    const name = String(record.form?.name || "").trim();
+    if (name) names.add(name);
+  });
+  callRecords.forEach((record) => {
+    const name = String(record.call?.studentName || "").trim();
+    if (name) names.add(name);
+  });
+  teacherCallRecords.forEach((record) => {
+    const name = String(record.studentName || record.teacher?.studentName || "").trim();
+    if (name) names.add(name);
+  });
+  return [...names];
+}
+
+function buildUserDashboardRows(planningRecords, callRecords, teacherCallRecords) {
+  return collectStudentNames(planningRecords, callRecords, teacherCallRecords).map((name) => {
+    const profile = findStudentProfiles(name, planningRecords, callRecords, teacherCallRecords);
+    const latestPlan = latestByTime(profile.planning, "createdAt");
+    const latestSales = latestByTime(profile.salesCalls);
+    const latestTeacher = latestByTime(profile.teacherCalls);
+    const form = latestPlan?.form || {};
+    const analysis = latestPlan?.analysis || {};
+    const call = latestSales?.call || {};
+    const teacher = latestTeacher?.teacher || {};
+    const level = latestSales ? customerTierLabel(latestSales) : "";
+    const updatedAt = [latestPlan?.updatedAt || latestPlan?.createdAt, latestSales?.updatedAt || latestSales?.createdAt, latestTeacher?.updatedAt || latestTeacher?.createdAt]
+      .filter(Boolean)
+      .sort()
+      .pop() || "";
+    return {
+      studentName: name,
+      updatedAt,
+      province: form.province || call.province || "",
+      city: form.city || call.city || "",
+      planningCount: profile.planning.length,
+      salesCount: profile.salesCalls.length,
+      teacherCount: profile.teacherCalls.length,
+      salesOwner: latestSales?.owner || null,
+      teacherOwner: latestTeacher?.owner || null,
+      customerLevel: level,
+      customerTier: latestSales ? customerTierCode(latestSales) : "",
+      trackedSubjects: latestSales ? trackedSubjects(latestSales) : [],
+      gaokaoLevel: analysis.gaokaoLevel || "",
+      totalScore: analysis.total ? `${analysis.total}/${analysis.totalMax || ""}` : (form.totalManual || call.scores?.total || ""),
+      summerFocus: analysis.summerFocus || "",
+      salesSummary: latestSales?.analysis?.report || call.quotes || "",
+      teacherSummary: teacher.summary || "",
+      teacherReport: latestTeacher?.report?.diagnosis || ""
+    };
+  }).sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+}
+
+function filterUserDashboardRows(rows, url) {
+  const sales = String(url.searchParams.get("sales") || "");
+  const teacher = String(url.searchParams.get("teacher") || "");
+  const tier = String(url.searchParams.get("tier") || "");
+  return rows
+    .filter((row) => !sales || row.salesOwner?.username === sales)
+    .filter((row) => !teacher || row.teacherOwner?.username === teacher)
+    .filter((row) => !tier || row.customerTier === tier);
+}
+
+function userDashboardToCsv(rows) {
+  const csvRows = [
+    ["更新时间", "学生", "地区", "销售账号", "主讲账号", "客户分层", "跟踪学科", "规划记录数", "销售记录数", "主讲记录数", "中考总分", "高考层次", "暑假重点", "销售摘要", "主讲记录", "主讲诊断报告"],
+    ...rows.map((row) => [
+      row.updatedAt,
+      row.studentName,
+      [row.province, row.city].filter(Boolean).join(" "),
+      row.salesOwner?.username || "",
+      row.teacherOwner?.username || "",
+      row.customerLevel || "",
+      row.trackedSubjects.join("、"),
+      row.planningCount,
+      row.salesCount,
+      row.teacherCount,
+      row.totalScore,
+      row.gaokaoLevel,
+      row.summerFocus,
+      row.salesSummary,
+      row.teacherSummary,
+      row.teacherReport
+    ])
+  ];
+  return csvRows.map((row) => row.map(csvEscape).join(",")).join("\n");
+}
+
 async function handleApi(req, res, url) {
   if (req.method === "GET" && url.pathname === "/api/health") {
     sendJson(res, 200, { ok: true, service: "gaokao-planner", time: new Date().toISOString() });
@@ -632,6 +726,35 @@ async function handleApi(req, res, url) {
     const teacherCallRecords = await readTeacherCallRecords();
     const profile = findStudentProfiles(name, planningRecords, callRecords, teacherCallRecords);
     sendJson(res, 200, { name, ...profile });
+    return;
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/user-dashboard") {
+    const user = requireAdmin(req, res);
+    if (!user) return;
+    const rows = filterUserDashboardRows(buildUserDashboardRows(
+      await readRecords(),
+      await readCallRecords(),
+      await readTeacherCallRecords()
+    ), url);
+    sendJson(res, 200, { rows });
+    return;
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/user-dashboard/export") {
+    const user = requireAdmin(req, res);
+    if (!user) return;
+    const rows = filterUserDashboardRows(buildUserDashboardRows(
+      await readRecords(),
+      await readCallRecords(),
+      await readTeacherCallRecords()
+    ), url);
+    res.writeHead(200, {
+      "Content-Type": "text/csv; charset=utf-8",
+      "Cache-Control": "no-store",
+      "Content-Disposition": "attachment; filename=user-dashboard.csv"
+    });
+    res.end(`\uFEFF${userDashboardToCsv(rows)}`);
     return;
   }
 
