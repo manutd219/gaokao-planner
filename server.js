@@ -28,6 +28,65 @@ const contentTypes = {
 
 const statuses = ["未跟进", "已沟通", "重点跟进", "已报名", "暂不考虑"];
 
+function parseUserList(raw, role) {
+  if (!raw) return [];
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return parsed
+        .filter((user) => user && user.username && user.password)
+        .map((user) => ({
+          username: String(user.username),
+          password: String(user.password),
+          name: String(user.name || user.username),
+          role
+        }));
+    }
+  } catch {}
+
+  return raw.split(";")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((item) => {
+      const [username, password, name] = item.split(":");
+      return username && password
+        ? { username, password, name: name || username, role }
+        : null;
+    })
+    .filter(Boolean);
+}
+
+function uniqueUsers(users) {
+  const seen = new Set();
+  return users.filter((user) => {
+    if (!user?.username || seen.has(user.username)) return false;
+    seen.add(user.username);
+    return true;
+  });
+}
+
+function parseAdminUsers() {
+  const legacyPassword = process.env.ADMIN_PASSWORD || "admin123";
+  const legacyAdmin = {
+    username: process.env.ADMIN_USERNAME || "admin",
+    password: legacyPassword,
+    name: process.env.ADMIN_NAME || "管理员",
+    role: "admin"
+  };
+  const configuredAdmins = parseUserList(process.env.ADMIN_USERS, "admin");
+  const defaultAdmins = Array.from({ length: 5 }, (_, index) => {
+    const number = String(index + 1).padStart(2, "0");
+    return {
+      username: `admin${number}`,
+      password: legacyPassword,
+      name: `管理员-${number}`,
+      role: "admin"
+    };
+  });
+  return uniqueUsers([legacyAdmin, ...configuredAdmins, ...defaultAdmins]);
+}
+
 function parseSalesUsers() {
   if (!process.env.SALES_USERS) {
     return [
@@ -40,30 +99,7 @@ function parseSalesUsers() {
     ];
   }
 
-  try {
-    const parsed = JSON.parse(process.env.SALES_USERS);
-    if (Array.isArray(parsed)) {
-      return parsed
-        .filter((user) => user && user.username && user.password)
-        .map((user) => ({
-          username: String(user.username),
-          password: String(user.password),
-          name: String(user.name || user.username),
-          role: "sales"
-        }));
-    }
-  } catch {}
-
-  return process.env.SALES_USERS.split(";")
-    .map((item) => item.trim())
-    .filter(Boolean)
-    .map((item) => {
-      const [username, password, name] = item.split(":");
-      return username && password
-        ? { username, password, name: name || username, role: "sales" }
-        : null;
-    })
-    .filter(Boolean);
+  return parseUserList(process.env.SALES_USERS, "sales");
 }
 
 function parseTeacherUsers() {
@@ -79,40 +115,12 @@ function parseTeacherUsers() {
     ];
   }
 
-  try {
-    const parsed = JSON.parse(process.env.TEACHER_USERS);
-    if (Array.isArray(parsed)) {
-      return parsed
-        .filter((user) => user && user.username && user.password)
-        .map((user) => ({
-          username: String(user.username),
-          password: String(user.password),
-          name: String(user.name || user.username),
-          role: "teacher"
-        }));
-    }
-  } catch {}
-
-  return process.env.TEACHER_USERS.split(";")
-    .map((item) => item.trim())
-    .filter(Boolean)
-    .map((item) => {
-      const [username, password, name] = item.split(":");
-      return username && password
-        ? { username, password, name: name || username, role: "teacher" }
-        : null;
-    })
-    .filter(Boolean);
+  return parseUserList(process.env.TEACHER_USERS, "teacher");
 }
 
 function getUsers() {
   return [
-    {
-      username: process.env.ADMIN_USERNAME || "admin",
-      password: process.env.ADMIN_PASSWORD || "admin123",
-      name: process.env.ADMIN_NAME || "管理员",
-      role: "admin"
-    },
+    ...parseAdminUsers(),
     ...parseSalesUsers(),
     ...parseTeacherUsers()
   ];
