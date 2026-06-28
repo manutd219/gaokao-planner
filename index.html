@@ -377,6 +377,58 @@
       border: 1px solid #cbd5e1;
     }
 
+    .teacher-top-controls {
+      display: none;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .teacher-subject-picker {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 7px;
+      border: 1px solid #d9e0e9;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.8);
+    }
+
+    .teacher-subject-picker span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .teacher-subject-picker button {
+      min-height: 30px;
+      padding: 0 12px;
+      border: 1px solid #d9e0e9;
+      border-radius: 999px;
+      background: #ffffff;
+      color: var(--ink);
+      cursor: pointer;
+      font-weight: 800;
+    }
+
+    .teacher-subject-picker button.active {
+      border-color: #315f9e;
+      background: #315f9e;
+      color: #ffffff;
+    }
+
+    .teacher-save-state {
+      color: var(--muted);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    body[data-view="teacher"] .teacher-top-controls {
+      display: flex;
+    }
+
     .workspace-header {
       display: flex;
       align-items: center;
@@ -1285,6 +1337,19 @@
           <button class="btn btn-secondary" id="resetCallTop" type="button" style="display:none">重置填写</button>
           <button class="btn btn-secondary" id="downloadFamilyTop" type="button">下载家长图</button>
           <button class="btn btn-secondary" id="downloadSalesTop" type="button">下载销售图</button>
+          <div class="teacher-top-controls" id="teacherTopControls">
+            <div class="teacher-subject-picker" aria-label="选择主讲学科">
+              <span>主讲学科</span>
+              <button class="active" type="button" data-teacher-subject="数学">数学</button>
+              <button type="button" data-teacher-subject="物理">物理</button>
+              <button type="button" data-teacher-subject="英语">英语</button>
+              <button type="button" data-teacher-subject="化学">化学</button>
+            </div>
+            <button class="btn btn-primary" id="teacherImportTop" type="button">粘贴销售摘要</button>
+            <span class="teacher-save-state" id="teacherSaveStateTop">本地自动保存</span>
+            <button class="btn btn-secondary" id="teacherResetTop" type="button">清空重置</button>
+            <button class="btn btn-primary" id="teacherSaveTop" type="button">保存记录</button>
+          </div>
           <div class="user-chip">
             <span id="workspaceUser">未登录</span>
           </div>
@@ -1422,7 +1487,7 @@
       </section>
 
       <section class="teacher-panel-view view-panel" id="teacherView">
-        <iframe class="teacher-frame" id="teacherFrame" src="主讲外呼看板.html?v=20260626b" title="主讲外呼看板"></iframe>
+        <iframe class="teacher-frame" id="teacherFrame" src="主讲外呼看板.html?v=20260628a" title="主讲外呼看板"></iframe>
       </section>
 
       <div class="report-wrap view-panel" id="planView">
@@ -1807,9 +1872,42 @@
       $("#downloadFamilyTop").style.display = view === "plan" ? "block" : "none";
       $("#downloadSalesTop").style.display = view === "sales" ? "block" : "none";
       $("#resetCallTop").style.display = view === "call" ? "block" : "none";
+      if (view === "teacher") syncTeacherTopControls();
       if (["lookup", "plan", "sales"].includes(view) && currentUser) loadRecords();
       if (view === "call" && currentUser) loadCallRecords();
       if (view === "backend") Promise.all([loadRecords(), loadCallRecords()]);
+    }
+
+    function getTeacherBridge() {
+      return document.querySelector("#teacherFrame")?.contentWindow?.teacherPanelBridge || null;
+    }
+
+    function setTeacherTopSubject(subject) {
+      document.querySelectorAll("[data-teacher-subject]").forEach((button) => {
+        button.classList.toggle("active", button.dataset.teacherSubject === subject);
+      });
+    }
+
+    function setTeacherTopMessage(message) {
+      const node = $("#teacherSaveStateTop");
+      if (node && message) node.textContent = message;
+    }
+
+    function syncTeacherTopControls() {
+      const bridge = getTeacherBridge();
+      const state = bridge?.getState?.();
+      if (state?.subject) setTeacherTopSubject(state.subject);
+      if (state?.message) setTeacherTopMessage(state.message);
+    }
+
+    function callTeacherPanel(action, ...args) {
+      const bridge = getTeacherBridge();
+      if (!bridge || typeof bridge[action] !== "function") {
+        setTeacherTopMessage("面板加载中，请稍后再试");
+        return;
+      }
+      bridge[action](...args);
+      syncTeacherTopControls();
     }
 
     function updateAuthUI() {
@@ -3410,6 +3508,21 @@
       if (typeof frame?.contentWindow?.resetCallPanel === "function") {
         frame.contentWindow.resetCallPanel();
       }
+    });
+    document.querySelectorAll("[data-teacher-subject]").forEach((button) => {
+      button.addEventListener("click", () => {
+        setTeacherTopSubject(button.dataset.teacherSubject);
+        callTeacherPanel("selectSubject", button.dataset.teacherSubject);
+      });
+    });
+    document.querySelector("#teacherImportTop").addEventListener("click", () => callTeacherPanel("openImport"));
+    document.querySelector("#teacherResetTop").addEventListener("click", () => callTeacherPanel("reset"));
+    document.querySelector("#teacherSaveTop").addEventListener("click", () => callTeacherPanel("save"));
+    document.querySelector("#teacherFrame").addEventListener("load", syncTeacherTopControls);
+    window.addEventListener("message", (event) => {
+      if (event.origin !== window.location.origin || event.data?.type !== "teacher-panel-state") return;
+      if (event.data.subject) setTeacherTopSubject(event.data.subject);
+      if (event.data.message) setTeacherTopMessage(event.data.message);
     });
     document.querySelector("#sumScoresBtn").addEventListener("click", sumVisibleScoresToTotal);
     document.querySelector("#planLoadRecentBtn").addEventListener("click", () => loadSelectedRecent("#planRecentSelect", "plan"));

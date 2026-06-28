@@ -136,6 +136,19 @@ h3 { margin-bottom: 0; font-size: 18px; }
   justify-content: flex-end;
 }
 
+body.embedded-in-main .teacher-app {
+  padding-top: 10px;
+}
+
+body.embedded-in-main .topbar {
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+body.embedded-in-main .topbar-actions {
+  display: none;
+}
+
 .save-state {
   padding: 7px 10px;
   border-radius: 999px;

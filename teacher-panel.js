@@ -2,6 +2,11 @@
   const STORAGE_KEY = "lingshi_teacher_call_panel_v1";
   const $ = (selector) => document.querySelector(selector);
   const $$ = (selector) => [...document.querySelectorAll(selector)];
+  const embeddedInMain = window.self !== window.top;
+
+  if (embeddedInMain) {
+    document.body.classList.add("embedded-in-main");
+  }
 
   const SUBJECT_KNOWLEDGE = {
     数学: {
@@ -453,6 +458,17 @@
     $$("[data-subject-select]").forEach((button) => {
       button.classList.toggle("selected", button.dataset.subjectSelect === inferPrimarySubject(student));
     });
+    notifyParent();
+  }
+
+  function notifyParent(message = "") {
+    if (!embeddedInMain) return;
+    const student = currentStudent();
+    window.parent.postMessage({
+      type: "teacher-panel-state",
+      subject: inferPrimarySubject(student),
+      message
+    }, window.location.origin);
   }
 
   function applySelected(selector, selectedValues) {
@@ -1025,6 +1041,38 @@
     $("#copySummaryBtn").addEventListener("click", () => copyText($("#teacherSummary").value, "主讲记录已复制"));
     $("#downloadReportBtn")?.addEventListener("click", downloadParentReport);
   }
+
+  window.teacherPanelBridge = {
+    selectSubject(subject) {
+      if (!SUBJECT_KNOWLEDGE[subject]) return;
+      readCurrentStudent();
+      currentStudent().selectedSubject = subject;
+      resetReportOverrides(currentStudent());
+      persist("主讲学科已切换");
+      renderCurrentStudent();
+      notifyParent("主讲学科已切换");
+    },
+    openImport() {
+      $("#openImportBtn")?.click();
+    },
+    reset() {
+      clearAllData();
+      notifyParent("已清空重置");
+    },
+    save() {
+      readCurrentStudent();
+      persist("已保存");
+      showToast("记录已保存到本机");
+      notifyParent("已保存");
+    },
+    getState() {
+      const student = currentStudent();
+      return {
+        subject: inferPrimarySubject(student),
+        message: $("#saveState")?.textContent || "本地自动保存"
+      };
+    }
+  };
 
   async function downloadParentReport() {
     readCurrentStudent();
