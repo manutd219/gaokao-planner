@@ -855,6 +855,36 @@
       background: #eff6ff;
     }
 
+    .user-info-block {
+      display: grid;
+      gap: 8px;
+      min-width: 260px;
+    }
+
+    .user-info-item {
+      padding: 8px;
+      border: 1px solid #e2e8f0;
+      background: #f8fafc;
+    }
+
+    .user-info-title {
+      display: block;
+      margin-bottom: 4px;
+      color: #667085;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .user-info-text {
+      color: #334155;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .gap-line {
+      margin-top: 2px;
+    }
+
     .owner-line {
       display: flex;
       justify-content: space-between;
@@ -1910,7 +1940,7 @@
           <div class="records-table-wrap">
             <table class="records-table user-dashboard-table">
               <thead>
-                <tr><th>学生与优先级</th><th>责任人与进度</th><th>学情重点</th><th>信息缺口</th><th>操作</th></tr>
+                <tr><th>学生与优先级</th><th>责任人与进度</th><th>学情重点</th><th>用户信息</th><th>操作</th></tr>
               </thead>
               <tbody id="userDashboardBody"><tr><td colspan="5">暂无用户汇总数据。</td></tr></tbody>
             </table>
@@ -3948,6 +3978,21 @@
       return [...new Set(gaps)];
     }
 
+    function dashboardOwnerName(owner, roleLabel) {
+      if (!owner?.username) return "未分配";
+      const rawName = String(owner.name || owner.username || "").trim();
+      if (!rawName) return "未分配";
+      if (new RegExp(`^${roleLabel}[-－]|${roleLabel}`).test(rawName)) return rawName;
+      if (/销售|主讲|老师/.test(rawName)) return rawName;
+      return `${roleLabel}-${rawName}`;
+    }
+
+    function dashboardExcerpt(text, fallback = "暂无记录") {
+      const value = String(text || "").replace(/\s+/g, " ").trim();
+      if (!value) return fallback;
+      return value.length > 90 ? `${value.slice(0, 90)}...` : value;
+    }
+
     function renderDashboardStats(rows) {
       const node = $("#userDashboardStats");
       if (!node) return;
@@ -3991,8 +4036,8 @@
             <div class="cell-muted">最近更新：${escapeHtml(formatTime(row.updatedAt))}</div>
           </td>
           <td>
-            <div class="owner-line"><span>销售</span><strong>${escapeHtml(row.salesOwner?.username || "未分配")}</strong></div>
-            <div class="owner-line"><span>主讲</span><strong>${escapeHtml(row.teacherOwner?.username || "未分配")}</strong></div>
+            <div class="owner-line"><span>销售</span><strong>${escapeHtml(dashboardOwnerName(row.salesOwner, "销售"))}</strong></div>
+            <div class="owner-line"><span>主讲</span><strong>${escapeHtml(dashboardOwnerName(row.teacherOwner, "主讲"))}</strong></div>
             <div class="cell-muted">规划 ${escapeHtml(row.planningCount)}｜销售 ${escapeHtml(row.salesCount)}｜主讲 ${escapeHtml(row.teacherCount)}</div>
           </td>
           <td>
@@ -4001,9 +4046,21 @@
             <div class="cell-muted"><strong>总分：</strong>${escapeHtml(row.totalScore || "-")}；<strong>暑假重点：</strong>${escapeHtml(row.summerFocus || "-")}</div>
           </td>
           <td>
-            ${dashboardMissingItems(row).length
-              ? dashboardMissingItems(row).slice(0, 6).map((item) => `<span class="gap-badge">${escapeHtml(item)}</span>`).join("")
-              : `<span class="gap-badge ok">关键信息较完整</span>`}
+            <div class="user-info-block">
+              <div class="user-info-item">
+                <span class="user-info-title">销售记录</span>
+                <div class="user-info-text">${escapeHtml(dashboardExcerpt(row.salesSummary, "暂无销售摘要"))}</div>
+              </div>
+              <div class="user-info-item">
+                <span class="user-info-title">主讲记录</span>
+                <div class="user-info-text">${escapeHtml(dashboardExcerpt(row.teacherReport || row.teacherSummary, "暂无主讲诊断"))}</div>
+              </div>
+              <div class="gap-line">
+                ${dashboardMissingItems(row).length
+                  ? dashboardMissingItems(row).slice(0, 4).map((item) => `<span class="gap-badge">${escapeHtml(item)}</span>`).join("")
+                  : `<span class="gap-badge ok">关键信息较完整</span>`}
+              </div>
+            </div>
           </td>
           <td>
             <div class="dashboard-actions">
