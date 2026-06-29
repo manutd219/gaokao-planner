@@ -88,18 +88,28 @@ function parseAdminUsers() {
 }
 
 function parseSalesUsers() {
-  if (!process.env.SALES_USERS) {
-    return [
-      {
-        username: process.env.SALES_USERNAME || "sales",
-        password: process.env.SALES_PASSWORD || "sales123",
-        name: process.env.SALES_NAME || "销售",
-        role: "sales"
-      }
-    ];
-  }
+  const configuredSales = process.env.SALES_USERS
+    ? parseUserList(process.env.SALES_USERS, "sales")
+    : [
+        {
+          username: process.env.SALES_USERNAME || "sales",
+          password: process.env.SALES_PASSWORD || "sales123",
+          name: process.env.SALES_NAME || "销售",
+          role: "sales"
+        }
+      ];
 
-  return parseUserList(process.env.SALES_USERS, "sales");
+  const defaultPassword = process.env.SALES_PASSWORD || configuredSales[0]?.password || "sales123";
+  const defaultSales = Array.from({ length: 5 }, (_, index) => {
+    const number = String(index + 1).padStart(2, "0");
+    return {
+      username: `sales${number}`,
+      password: defaultPassword,
+      name: `销售-${number}`,
+      role: "sales"
+    };
+  });
+  return uniqueUsers([...configuredSales, ...defaultSales]);
 }
 
 function parseTeacherUsers() {

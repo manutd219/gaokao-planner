@@ -50,6 +50,8 @@ RECORDS_FILE=/data/records.json
 NODE_ENV=production
 ```
 
+系统会默认补齐 `sales01` 到 `sales05` 五个销售账号。默认密码优先使用 `SALES_PASSWORD`；如果没有配置 `SALES_PASSWORD`，会沿用 `SALES_USERS` 里第一个销售账号的密码。若 `SALES_USERS` 中已经配置了同名账号，以 `SALES_USERS` 为准。
+
 ## 推荐部署方式
 
 推荐使用 Render、Railway、Fly.io 或任意 Node.js 云服务器。
