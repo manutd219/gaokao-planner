@@ -8,8 +8,11 @@ const DATA_DIR = process.env.DATA_DIR || path.join(ROOT, "data");
 const RECORDS_FILE = process.env.RECORDS_FILE || path.join(DATA_DIR, "records.json");
 const CALLS_FILE = process.env.CALLS_FILE || path.join(DATA_DIR, "calls.json");
 const TEACHER_CALLS_FILE = process.env.TEACHER_CALLS_FILE || path.join(DATA_DIR, "teacher-calls.json");
+const LOGIN_EVENTS_FILE = process.env.LOGIN_EVENTS_FILE || path.join(DATA_DIR, "login-events.json");
 const PORT = Number(process.env.PORT || 4173);
 const SESSION_TTL_MS = Number(process.env.SESSION_TTL_HOURS || 24) * 60 * 60 * 1000;
+const ACTIVE_WINDOW_MS = Number(process.env.ACTIVE_WINDOW_MINUTES || 30) * 60 * 1000;
+const MAX_LOGIN_EVENTS = Number(process.env.MAX_LOGIN_EVENTS || 5000);
 const NODE_ENV = process.env.NODE_ENV || "development";
 
 const sessions = new Map();
@@ -221,6 +224,14 @@ async function writeTeacherCallRecords(records) {
   return writeJsonArray(TEACHER_CALLS_FILE, records);
 }
 
+async function readLoginEvents() {
+  return readJsonArray(LOGIN_EVENTS_FILE);
+}
+
+async function writeLoginEvents(records) {
+  return writeJsonArray(LOGIN_EVENTS_FILE, records.slice(-MAX_LOGIN_EVENTS));
+}
+
 function publicUser(user) {
   return {
     username: user.username,
@@ -236,14 +247,21 @@ function cleanupSessions() {
   }
 }
 
-function getSessionUser(req) {
-  cleanupSessions();
+function getAuthToken(req) {
   const auth = req.headers.authorization || "";
-  const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
+  return auth.startsWith("Bearer ") ? auth.slice(7) : "";
+}
+
+function getSession(req) {
+  cleanupSessions();
+  const token = getAuthToken(req);
   if (!token) return null;
   const session = sessions.get(token);
-  if (!session) return null;
-  return session.user;
+  return session ? { token, session } : null;
+}
+
+function getSessionUser(req) {
+  return getSession(req)?.session.user || null;
 }
 
 function requireUser(req, res) {
@@ -351,6 +369,64 @@ function requireAdmin(req, res) {
 function csvEscape(value) {
   const text = String(value ?? "");
   return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+}
+
+function clientIp(req) {
+  const forwarded = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim();
+  return forwarded || req.socket.remoteAddress || "";
+}
+
+function loginStatus(event, now = Date.now()) {
+  if (event.loggedOutAt) return "已退出";
+  const lastActive = new Date(event.lastActiveAt || event.loginAt || 0).getTime();
+  return now - lastActive <= ACTIVE_WINDOW_MS ? "在线" : "未活跃";
+}
+
+function decorateLoginEvents(records) {
+  const now = Date.now();
+  return records.map((record) => ({ ...record, status: loginStatus(record, now) }));
+}
+
+async function appendLoginEvent(req, user, loginId) {
+  const now = new Date().toISOString();
+  const records = await readLoginEvents();
+  records.push({
+    id: loginId,
+    loginAt: now,
+    lastActiveAt: now,
+    loggedOutAt: "",
+    user: publicUser(user),
+    ip: clientIp(req),
+    userAgent: String(req.headers["user-agent"] || "")
+  });
+  await writeLoginEvents(records);
+}
+
+async function updateLoginActivity(loginId, patch = {}) {
+  if (!loginId) return;
+  const records = await readLoginEvents();
+  const index = records.findIndex((record) => record.id === loginId);
+  if (index === -1) return;
+  records[index] = { ...records[index], ...patch };
+  await writeLoginEvents(records);
+}
+
+function loginEventsToCsv(records) {
+  const rows = [
+    ["登录时间", "账号", "姓名", "角色", "状态", "最近活跃时间", "退出时间", "IP", "设备信息"],
+    ...decorateLoginEvents(records).map((record) => [
+      record.loginAt,
+      record.user?.username || "",
+      record.user?.name || "",
+      record.user?.role || "",
+      record.status || "",
+      record.lastActiveAt || "",
+      record.loggedOutAt || "",
+      record.ip || "",
+      record.userAgent || ""
+    ])
+  ];
+  return rows.map((row) => row.map(csvEscape).join(",")).join("\n");
 }
 
 function recordsToCsv(records) {
@@ -604,19 +680,37 @@ async function handleApi(req, res, url) {
       return;
     }
     const token = randomUUID();
+    const loginId = randomUUID();
     sessions.set(token, {
       user,
+      loginId,
       expiresAt: Date.now() + SESSION_TTL_MS
     });
+    await appendLoginEvent(req, user, loginId);
     sendJson(res, 200, { token, user: publicUser(user) });
     return;
   }
 
   if (req.method === "POST" && url.pathname === "/api/logout") {
-    const auth = req.headers.authorization || "";
-    const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-    if (token) sessions.delete(token);
+    const sessionInfo = getSession(req);
+    if (sessionInfo) {
+      const now = new Date().toISOString();
+      await updateLoginActivity(sessionInfo.session.loginId, { lastActiveAt: now, loggedOutAt: now });
+      sessions.delete(sessionInfo.token);
+    }
     sendJson(res, 200, { ok: true });
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/activity") {
+    const sessionInfo = getSession(req);
+    if (!sessionInfo) {
+      sendJson(res, 401, { error: "请先登录" });
+      return;
+    }
+    const now = new Date().toISOString();
+    await updateLoginActivity(sessionInfo.session.loginId, { lastActiveAt: now });
+    sendJson(res, 200, { ok: true, lastActiveAt: now });
     return;
   }
 
@@ -773,6 +867,43 @@ async function handleApi(req, res, url) {
       "Content-Disposition": "attachment; filename=user-dashboard.csv"
     });
     res.end(`\uFEFF${userDashboardToCsv(rows)}`);
+    return;
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/login-events") {
+    const user = requireAdmin(req, res);
+    if (!user) return;
+    const role = String(url.searchParams.get("role") || "");
+    const status = String(url.searchParams.get("status") || "");
+    const account = String(url.searchParams.get("account") || "").trim().toLowerCase();
+    const records = decorateLoginEvents(await readLoginEvents())
+      .filter((record) => !role || record.user?.role === role)
+      .filter((record) => !status || record.status === status)
+      .filter((record) => !account || String(record.user?.username || "").toLowerCase().includes(account) || String(record.user?.name || "").toLowerCase().includes(account))
+      .sort((a, b) => String(b.loginAt).localeCompare(String(a.loginAt)))
+      .slice(0, 300);
+    sendJson(res, 200, { records });
+    return;
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/login-events/export") {
+    const user = requireAdmin(req, res);
+    if (!user) return;
+    const role = String(url.searchParams.get("role") || "");
+    const status = String(url.searchParams.get("status") || "");
+    const account = String(url.searchParams.get("account") || "").trim().toLowerCase();
+    const records = (await readLoginEvents())
+      .filter((record) => !role || record.user?.role === role)
+      .filter((record) => !account || String(record.user?.username || "").toLowerCase().includes(account) || String(record.user?.name || "").toLowerCase().includes(account));
+    const decorated = decorateLoginEvents(records)
+      .filter((record) => !status || record.status === status)
+      .sort((a, b) => String(b.loginAt).localeCompare(String(a.loginAt)));
+    res.writeHead(200, {
+      "Content-Type": "text/csv; charset=utf-8",
+      "Cache-Control": "no-store",
+      "Content-Disposition": "attachment; filename=login-events.csv"
+    });
+    res.end(`\uFEFF${loginEventsToCsv(decorated)}`);
     return;
   }
 

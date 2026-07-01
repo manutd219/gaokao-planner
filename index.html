@@ -1907,6 +1907,7 @@
           <button class="backend-tab" type="button" role="tab" aria-selected="false" data-backend-tab="planning">规划查询数据</button>
           <button class="backend-tab" type="button" role="tab" aria-selected="false" data-backend-tab="calls">销售外呼看板</button>
           <button class="backend-tab" type="button" role="tab" aria-selected="false" data-backend-tab="teachers">主讲外呼看板</button>
+          <button class="backend-tab" type="button" role="tab" aria-selected="false" data-backend-tab="logins">账号登录记录</button>
         </div>
 
         <section class="backend-data-panel" data-backend-panel="users">
@@ -2036,6 +2037,45 @@
             </table>
           </div>
         </section>
+
+        <section class="backend-data-panel" data-backend-panel="logins" hidden>
+          <div class="backend-head">
+            <div>
+              <h2>账号登录记录</h2>
+              <p class="status-text" id="loginEventsSummary">记录账号登录、最近活跃和退出状态。</p>
+            </div>
+            <button class="btn btn-secondary" id="exportLoginEventsBtn" type="button">导出登录记录</button>
+          </div>
+          <div class="backend-tools">
+            <label>账号/姓名
+              <input id="loginEventAccountFilter" placeholder="输入账号或姓名" />
+            </label>
+            <label>角色
+              <select id="loginEventRoleFilter">
+                <option value="">全部角色</option>
+                <option value="admin">管理员</option>
+                <option value="sales">销售</option>
+                <option value="teacher">主讲</option>
+              </select>
+            </label>
+            <label>状态
+              <select id="loginEventStatusFilter">
+                <option value="">全部状态</option>
+                <option>在线</option>
+                <option>未活跃</option>
+                <option>已退出</option>
+              </select>
+            </label>
+          </div>
+          <div class="records-table-wrap">
+            <table class="records-table">
+              <thead>
+                <tr><th>登录时间</th><th>账号</th><th>角色</th><th>状态</th><th>最近活跃</th><th>退出时间</th><th>IP</th><th>设备信息</th></tr>
+              </thead>
+              <tbody id="loginEventsBody"><tr><td colspan="8">暂无登录记录。</td></tr></tbody>
+            </table>
+          </div>
+        </section>
       </section>
     </section>
   </main>
@@ -2060,6 +2100,8 @@
     let allCallRecords = [];
     let allTeacherCallRecords = [];
     let allUserDashboardRows = [];
+    let allLoginEvents = [];
+    let activityTimer = null;
     let latestLookupProfile = null;
     let latestAnalysis = null;
     let latestCallContext = null;
@@ -2070,7 +2112,10 @@
     };
 
     function roleLabel(role) {
-      return role === "admin" ? "管理员" : role === "teacher" ? "主讲" : "销售";
+      if (role === "admin") return "管理员";
+      if (role === "teacher") return "主讲";
+      if (role === "sales") return "销售";
+      return "-";
     }
 
     function defaultViewForUser(user) {
@@ -2101,6 +2146,25 @@
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "操作失败，请稍后再试");
       return payload;
+    }
+
+    function stopActivityHeartbeat() {
+      if (activityTimer) clearInterval(activityTimer);
+      activityTimer = null;
+    }
+
+    async function sendActivityHeartbeat() {
+      if (!authToken || !currentUser) return;
+      try {
+        await apiFetch("/api/activity", { method: "POST", body: JSON.stringify({}) });
+      } catch {}
+    }
+
+    function startActivityHeartbeat() {
+      stopActivityHeartbeat();
+      if (!authToken || !currentUser) return;
+      sendActivityHeartbeat();
+      activityTimer = setInterval(sendActivityHeartbeat, 3 * 60 * 1000);
     }
 
     function formatTime(value) {
@@ -2177,6 +2241,7 @@
           if (target === "users") renderUserDashboard();
           if (target === "calls") renderAdminCallRecords();
           if (target === "teachers") renderAdminTeacherCallRecords();
+          if (target === "logins") renderLoginEvents();
         });
       });
     }
@@ -2197,7 +2262,7 @@
       if (view === "teacher") syncTeacherTopControls();
       if (["lookup", "plan", "sales"].includes(view) && currentUser) loadRecords();
       if (view === "call" && currentUser) loadCallRecords();
-      if (view === "backend") Promise.all([loadRecords(), loadCallRecords(), loadTeacherCallRecords(), loadUserDashboard()]);
+      if (view === "backend") Promise.all([loadRecords(), loadCallRecords(), loadTeacherCallRecords(), loadUserDashboard(), loadLoginEvents()]);
     }
 
     function getTeacherBridge() {
@@ -2299,12 +2364,14 @@
         const payload = await apiFetch("/api/me");
         currentUser = payload.user;
         updateAuthUI();
+        startActivityHeartbeat();
         showView(defaultViewForUser(currentUser));
-        await Promise.all([loadRecords(), loadCallRecords(), loadTeacherCallRecords(), loadUserDashboard()]);
+        await Promise.all([loadRecords(), loadCallRecords(), loadTeacherCallRecords(), loadUserDashboard(), loadLoginEvents()]);
       } catch {
         authToken = "";
         currentUser = null;
         localStorage.removeItem("gaokao_planner_token");
+        stopActivityHeartbeat();
         updateAuthUI();
       }
     }
@@ -4116,6 +4183,90 @@
       }
     }
 
+    function loginEventStatusClass(status) {
+      if (status === "在线") return "priority-a";
+      if (status === "未活跃") return "priority-pending";
+      return "priority-d";
+    }
+
+    function filteredLoginEvents() {
+      const account = ($("#loginEventAccountFilter")?.value || "").trim().toLowerCase();
+      const role = $("#loginEventRoleFilter")?.value || "";
+      const status = $("#loginEventStatusFilter")?.value || "";
+      return [...allLoginEvents]
+        .filter((record) => !account || String(record.user?.username || "").toLowerCase().includes(account) || String(record.user?.name || "").toLowerCase().includes(account))
+        .filter((record) => !role || record.user?.role === role)
+        .filter((record) => !status || record.status === status)
+        .sort((a, b) => String(b.loginAt).localeCompare(String(a.loginAt)));
+    }
+
+    function renderLoginEvents() {
+      const body = $("#loginEventsBody");
+      if (!body) return;
+      if (currentUser?.role !== "admin") {
+        body.innerHTML = `<tr><td colspan="8">只有管理员可以查看账号登录记录。</td></tr>`;
+        return;
+      }
+      const records = filteredLoginEvents();
+      const summary = $("#loginEventsSummary");
+      if (summary) summary.textContent = `当前筛选 ${records.length} 条；在线状态按最近 30 分钟活跃判断。`;
+      body.innerHTML = records.length ? records.map((record) => `
+        <tr>
+          <td>${escapeHtml(formatTime(record.loginAt))}</td>
+          <td><strong>${escapeHtml(record.user?.username || "-")}</strong><br><span class="status-text">${escapeHtml(record.user?.name || "")}</span></td>
+          <td>${escapeHtml(roleLabel(record.user?.role))}</td>
+          <td><span class="tier-badge ${escapeHtml(loginEventStatusClass(record.status))}">${escapeHtml(record.status || "-")}</span></td>
+          <td>${escapeHtml(formatTime(record.lastActiveAt))}</td>
+          <td>${escapeHtml(record.loggedOutAt ? formatTime(record.loggedOutAt) : "-")}</td>
+          <td>${escapeHtml(record.ip || "-")}</td>
+          <td><details class="summary-details"><summary>查看设备</summary><pre>${escapeHtml(record.userAgent || "未记录")}</pre></details></td>
+        </tr>
+      `).join("") : `<tr><td colspan="8">暂无符合筛选条件的登录记录。</td></tr>`;
+    }
+
+    async function loadLoginEvents() {
+      if (!currentUser || currentUser.role !== "admin") {
+        allLoginEvents = [];
+        renderLoginEvents();
+        return;
+      }
+      try {
+        const payload = await apiFetch("/api/login-events");
+        allLoginEvents = payload.records || [];
+        renderLoginEvents();
+      } catch (error) {
+        setBackendMessage(error.message);
+      }
+    }
+
+    async function exportLoginEvents() {
+      if (!currentUser || currentUser.role !== "admin") {
+        setBackendMessage("只有管理员可以导出登录记录。");
+        return;
+      }
+      const params = new URLSearchParams();
+      const account = ($("#loginEventAccountFilter")?.value || "").trim();
+      const role = $("#loginEventRoleFilter")?.value || "";
+      const status = $("#loginEventStatusFilter")?.value || "";
+      if (account) params.set("account", account);
+      if (role) params.set("role", role);
+      if (status) params.set("status", status);
+      try {
+        const response = await fetch(`/api/login-events/export?${params.toString()}`, {
+          headers: { Authorization: `Bearer ${authToken}` }
+        });
+        if (!response.ok) throw new Error("导出失败，请稍后再试");
+        const blob = await response.blob();
+        const link = document.createElement("a");
+        link.download = `账号登录记录-${new Date().toISOString().slice(0, 10)}.csv`;
+        link.href = URL.createObjectURL(blob);
+        link.click();
+        URL.revokeObjectURL(link.href);
+      } catch (error) {
+        setBackendMessage(error.message);
+      }
+    }
+
     updateCityOptions("深圳");
     renderScoreFields();
 
@@ -4168,8 +4319,9 @@
         currentUser = payload.user;
         localStorage.setItem("gaokao_planner_token", authToken);
         updateAuthUI();
+        startActivityHeartbeat();
         showView(defaultViewForUser(currentUser));
-        await Promise.all([loadRecords(), loadCallRecords(), loadTeacherCallRecords(), loadUserDashboard()]);
+        await Promise.all([loadRecords(), loadCallRecords(), loadTeacherCallRecords(), loadUserDashboard(), loadLoginEvents()]);
       } catch (error) {
         $("#loginHint").textContent = error.message;
       }
@@ -4185,9 +4337,11 @@
       allCallRecords = [];
       allTeacherCallRecords = [];
       allUserDashboardRows = [];
+      allLoginEvents = [];
       latestCallContext = null;
       currentSourceCallId = "";
       localStorage.removeItem("gaokao_planner_token");
+      stopActivityHeartbeat();
       updateAuthUI();
       setBackendMessage("已退出登录。");
       renderRecentSelectors();
@@ -4233,10 +4387,11 @@
     document.querySelector("#userLookupInput").addEventListener("keydown", (event) => {
       if (event.key === "Enter") loadLookupRecord();
     });
-    document.querySelector("#refreshRecordsBtn").addEventListener("click", () => Promise.all([loadRecords(), loadCallRecords(), loadTeacherCallRecords(), loadUserDashboard()]));
+    document.querySelector("#refreshRecordsBtn").addEventListener("click", () => Promise.all([loadRecords(), loadCallRecords(), loadTeacherCallRecords(), loadUserDashboard(), loadLoginEvents()]));
     document.querySelector("#exportRecordsBtn").addEventListener("click", exportRecords);
     document.querySelector("#exportTeacherRecordsBtn").addEventListener("click", exportTeacherCallRecords);
     document.querySelector("#exportUserDashboardBtn").addEventListener("click", exportUserDashboard);
+    document.querySelector("#exportLoginEventsBtn").addEventListener("click", exportLoginEvents);
     document.querySelector("#recordSearch").addEventListener("input", renderRecords);
     document.querySelector("#recordStatusFilter").addEventListener("change", renderRecords);
     document.querySelector("#teacherUserFilter").addEventListener("change", renderAdminTeacherCallRecords);
@@ -4244,6 +4399,9 @@
     document.querySelector("#dashboardSalesFilter").addEventListener("change", renderUserDashboard);
     document.querySelector("#dashboardTeacherFilter").addEventListener("change", renderUserDashboard);
     document.querySelector("#dashboardTierFilter").addEventListener("change", renderUserDashboard);
+    document.querySelector("#loginEventAccountFilter").addEventListener("input", renderLoginEvents);
+    document.querySelector("#loginEventRoleFilter").addEventListener("change", renderLoginEvents);
+    document.querySelector("#loginEventStatusFilter").addEventListener("change", renderLoginEvents);
     document.querySelector("#userDashboardBody").addEventListener("click", (event) => {
       const button = event.target.closest("[data-dashboard-lookup]");
       if (!button) return;
