@@ -211,8 +211,19 @@
     font:inherit;
   }
   button.primary{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:700}
+  button.danger{border-color:#efc8bd;color:var(--red);background:#fff8f5}
+  button.mini{padding:5px 8px;border-radius:7px;font-size:12px}
   button:hover{filter:brightness(.98);border-color:#b6c4de;color:var(--ink)}
   button.primary:hover{color:#fff}
+  .draft-card{background:#fffaf1;border-color:#ead6af}
+  .draft-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+  .draft-status{font-size:11px;color:#986018}
+  .draft-list{display:grid;gap:8px}
+  .draft-item{border:1px solid #ead6af;background:#fff;border-radius:9px;padding:8px}
+  .draft-title{font-weight:800;color:var(--ink);font-size:13px}
+  .draft-meta{color:var(--faint);font-size:11px;margin-top:2px}
+  .draft-summary{color:var(--muted);font-size:12px;margin-top:4px}
+  .draft-actions{display:flex;gap:6px;margin-top:7px}
   .section-title{display:flex;justify-content:space-between;gap:8px;align-items:center}
   .section-title span{color:var(--faint);font-size:12px}
   .divider{height:1px;background:var(--line);margin:12px 0}
@@ -252,6 +263,15 @@
       <textarea id="quotes" placeholder="可粘贴完整用户信息和家长原话，例如：地区、阶段、成绩、薄弱学科、孩子状态、已报课程和家长顾虑等。"></textarea>
       <input id="notes" type="hidden">
       <div class="data-note">输入停止后自动补全其他字段；无法确认的信息保持空白。</div>
+    </div>
+
+    <div class="card draft-card">
+      <div class="draft-head">
+        <h2 style="margin:0">本地草稿箱</h2>
+        <span id="draftStatus" class="draft-status">未保存草稿</span>
+      </div>
+      <div id="draftList" class="draft-list"></div>
+      <div class="data-note">草稿只保存在当前电脑浏览器，用于防止刷新或后台异常导致内容丢失。</div>
     </div>
 
     <div class="card">
@@ -615,12 +635,19 @@ document.querySelectorAll(".chip").forEach(chip => {
     }
     chip.classList.toggle("sel");
     render();
+    scheduleDraftSave();
   });
 });
 pEl.addEventListener("change", updateCities);
 els.city.addEventListener("change", updateDistricts);
-Object.values(els).forEach(el => el.addEventListener("input", render));
-Object.values(els).forEach(el => el.addEventListener("change", render));
+Object.values(els).forEach(el => el.addEventListener("input", () => {
+  render();
+  scheduleDraftSave();
+}));
+Object.values(els).forEach(el => el.addEventListener("change", () => {
+  render();
+  scheduleDraftSave();
+}));
 
 function fillEmpty(id,value){
   if(value && !els[id].value) els[id].value = value;
@@ -698,6 +725,7 @@ function applySalesTextAutofill(){
   ];
   chipRules.forEach(([group,label,pattern]) => { if(pattern.test(text)) selectDetectedChip(group,label); });
   render();
+  scheduleDraftSave();
 }
 
 let salesTextAutofillTimer;
@@ -745,6 +773,178 @@ function getState(){
     teacherFocus: els.teacherFocus.value.trim()
   };
 }
+
+const DRAFT_KEY = "lingshi_sales_call_drafts_v1";
+const MAX_DRAFTS = 10;
+let draftTimer = null;
+let currentDraftId = "";
+
+function draftFieldsHaveContent(s){
+  const scoreValues = Object.values(s.scores || {});
+  return Boolean(
+    s.studentName || s.province || s.city || s.district || s.stage || s.decision || s.pathway || s.school ||
+    s.policyAwareness || s.majorAwareness || scoreValues.some(Boolean) || s.scoreNote || s.quotes || s.notes ||
+    s.teacherSubject || s.teacherTarget || s.teacherFocus ||
+    s.reason.length || s.concern.length || s.problems.length || s.subjects.length ||
+    s.tutoring.length || s.tutoringRhythm.length || s.objections.length || s.next.length
+  );
+}
+
+function draftIdFor(s){
+  if(s.studentName) return `student:${s.studentName}`;
+  return currentDraftId || `draft:${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function readDrafts(){
+  try{
+    const parsed = JSON.parse(localStorage.getItem(DRAFT_KEY) || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  }catch(error){
+    return [];
+  }
+}
+
+function writeDrafts(drafts){
+  localStorage.setItem(DRAFT_KEY, JSON.stringify(drafts.slice(0, MAX_DRAFTS)));
+}
+
+function draftTitle(s){
+  return s.studentName || firstMatch(s.quotes || "", /^([\u4e00-\u9fa5·]{2,6})(?=\s|1[3-9]\d{9}|，|,)/u) || "未命名学生";
+}
+
+function draftSummary(s){
+  const parts = [];
+  const area = [s.province, s.city, s.district].filter(Boolean).join(" ");
+  if(area) parts.push(area);
+  const scores = [];
+  if(s.scores?.total) scores.push(`总分${s.scores.total}`);
+  if(s.scores?.math) scores.push(`数学${s.scores.math}`);
+  if(s.scores?.english) scores.push(`英语${s.scores.english}`);
+  if(s.scores?.physics) scores.push(`物理${s.scores.physics}`);
+  if(scores.length) parts.push(scores.join("，"));
+  const tags = [...(s.subjects || []), ...(s.problems || [])].slice(0,4).join("，");
+  if(tags) parts.push(tags);
+  return parts.join("；") || (s.quotes || "暂无摘要").slice(0,42);
+}
+
+function saveDraft(message="已自动保存"){
+  const state = getState();
+  if(!draftFieldsHaveContent(state)) return;
+  const nextId = draftIdFor(state);
+  const drafts = readDrafts().filter(item => item.id !== nextId && item.id !== currentDraftId);
+  currentDraftId = nextId;
+  writeDrafts([{
+    id: nextId,
+    updatedAt: new Date().toISOString(),
+    title: draftTitle(state),
+    summary: draftSummary(state),
+    state
+  }, ...drafts]);
+  renderDraftBox(message);
+}
+
+function scheduleDraftSave(){
+  clearTimeout(draftTimer);
+  draftTimer = setTimeout(() => saveDraft(), 650);
+}
+
+function setChips(group, values){
+  const wanted = new Set(values || []);
+  document.querySelectorAll(`[data-group="${group}"] .chip`).forEach(chip => {
+    chip.classList.toggle("sel", wanted.has(chip.textContent.trim()));
+  });
+}
+
+function setSelectValue(id,value){
+  if(value && [...els[id].options].some(option => option.value === value || option.textContent === value)){
+    els[id].value = value;
+  }else{
+    els[id].value = "";
+  }
+}
+
+function setState(state){
+  Object.values(els).forEach(el => {
+    if(el.tagName === "SELECT") el.selectedIndex = 0;
+    else el.value = "";
+  });
+  document.querySelectorAll(".chip.sel").forEach(x=>x.classList.remove("sel"));
+  els.studentName.value = state.studentName || "";
+  els.gender.value = state.gender || "";
+  els.province.value = state.province || "";
+  updateCities();
+  setSelectValue("city", state.city || "");
+  updateDistricts();
+  setSelectValue("district", state.district || "");
+  ["stage","decision","pathway","policyAwareness","majorAwareness","teacherSubject","teacherTarget"].forEach(id => {
+    els[id].value = state[id] || "";
+  });
+  els.school.value = state.school || "";
+  els.scoreTotal.value = state.scores?.total || "";
+  els.scoreChinese.value = state.scores?.chinese || "";
+  els.scoreMath.value = state.scores?.math || "";
+  els.scoreEnglish.value = state.scores?.english || "";
+  els.scorePhysics.value = state.scores?.physics || "";
+  els.scoreChemistry.value = state.scores?.chemistry || "";
+  els.scoreHistory.value = state.scores?.history || "";
+  els.rank.value = state.scores?.rank || "";
+  els.scoreNote.value = state.scoreNote || "";
+  els.quotes.value = state.quotes || "";
+  els.notes.value = state.notes || "";
+  els.teacherFocus.value = state.teacherFocus || "";
+  ["reason","concern","problems","subjects","tutoring","tutoringRhythm","objections","next"].forEach(group => setChips(group, state[group]));
+}
+
+function formatDraftTime(iso){
+  const date = new Date(iso);
+  if(Number.isNaN(date.getTime())) return "";
+  return `${String(date.getMonth()+1).padStart(2,"0")}/${String(date.getDate()).padStart(2,"0")} ${String(date.getHours()).padStart(2,"0")}:${String(date.getMinutes()).padStart(2,"0")}`;
+}
+
+function renderDraftBox(statusText=""){
+  const list = document.getElementById("draftList");
+  const status = document.getElementById("draftStatus");
+  const drafts = readDrafts();
+  if(statusText) status.textContent = statusText;
+  else status.textContent = drafts.length ? `共 ${drafts.length} 条` : "未保存草稿";
+  if(!drafts.length){
+    list.innerHTML = `<div class="small">暂无草稿。开始填写后会自动保存。</div>`;
+    return;
+  }
+  list.innerHTML = drafts.map(item => `
+    <div class="draft-item" data-draft-id="${escapeHtml(item.id)}">
+      <div class="draft-title">${escapeHtml(item.title || "未命名学生")}</div>
+      <div class="draft-meta">${escapeHtml(formatDraftTime(item.updatedAt))}</div>
+      <div class="draft-summary">${escapeHtml(item.summary || "暂无摘要")}</div>
+      <div class="draft-actions">
+        <button class="mini primary" data-draft-action="restore">恢复</button>
+        <button class="mini danger" data-draft-action="delete">删除</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+document.getElementById("draftList").addEventListener("click", event => {
+  const button = event.target.closest("[data-draft-action]");
+  if(!button) return;
+  const item = button.closest("[data-draft-id]");
+  const id = item?.dataset.draftId;
+  const drafts = readDrafts();
+  const draft = drafts.find(entry => entry.id === id);
+  if(!draft) return;
+  if(button.dataset.draftAction === "restore"){
+    currentDraftId = id;
+    setState(draft.state || {});
+    render();
+    renderDraftBox("已恢复草稿");
+    return;
+  }
+  if(button.dataset.draftAction === "delete"){
+    writeDrafts(drafts.filter(entry => entry.id !== id));
+    if(currentDraftId === id) currentDraftId = "";
+    renderDraftBox("已删除草稿");
+  }
+});
 
 function gaokaoMode(province){
   if(!province) return {mode:"未确认", text:"请先选择省份。"};
@@ -1358,8 +1558,10 @@ document.getElementById("copyReport").addEventListener("click", async () => {
   }
   try{
     const result = await requestParentCallSnapshot("gaokao-planner:save-call-summary", state);
+    saveDraft("已同步本地草稿");
     alert(`${copied ? "已复制学情摘要，" : "复制失败，但"}${result.message || "已更新后台外呼记录"}`);
   }catch(error){
+    saveDraft("后台失败，已保留本地草稿");
     alert(`${copied ? "已复制学情摘要，但" : ""}后台未保存：${error.message}`);
   }
 });
@@ -1380,7 +1582,9 @@ function resetCallPanel(){
   });
   document.querySelectorAll(".chip.sel").forEach(x=>x.classList.remove("sel"));
   updateCities();
+  currentDraftId = "";
   render();
+  renderDraftBox("已清空当前填写");
 }
 window.resetCallPanel = resetCallPanel;
 document.getElementById("resetBtn").addEventListener("click", resetCallPanel);
@@ -1401,6 +1605,7 @@ document.getElementById("generatePlanBtn").addEventListener("click", () => {
 });
 
 render();
+renderDraftBox();
 </script>
 </body>
 </html>
