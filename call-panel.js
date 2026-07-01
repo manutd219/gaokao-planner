@@ -197,6 +197,17 @@ async function copyCallText(text, message) {
   setCallMessage(message);
 }
 
+async function copyAndSaveCallSummary() {
+  const text = buildCallReport(getCallState());
+  await navigator.clipboard.writeText(text);
+  try {
+    const record = await saveCallRecord({ silent: true });
+    setCallMessage(`已复制学情摘要，并保存${record.call?.studentName || "学生"}的外呼记录。`);
+  } catch (error) {
+    setCallMessage(`已复制学情摘要，但后台未保存：${error.message}`);
+  }
+}
+
 function resetCallPanel() {
   callFieldIds.forEach((suffix) => {
     const node = callNode(suffix);
@@ -512,15 +523,23 @@ function setupCallPanel() {
       if (event.origin !== window.location.origin) return;
       const type = event.data?.type;
       if (!["gaokao-planner:save-call-summary", "gaokao-planner:generate-from-call"].includes(type)) return;
+      const requestId = event.data?.requestId || "";
+      const reply = (payload) => {
+        if (!requestId || !event.source) return;
+        event.source.postMessage({ type: "gaokao-planner:call-panel-result", requestId, ...payload }, event.origin);
+      };
       try {
         if (type === "gaokao-planner:save-call-summary") {
           const record = await saveReplicatedCallRecord(event.data.payload, event.data.analysis || {});
           setBackendMessage(`已更新${record.call?.studentName || "学生"}的外呼摘要记录。`);
+          reply({ ok: true, message: `已保存${record.call?.studentName || "学生"}的外呼记录` });
         } else {
           await generatePlanFromReplicatedCall(event.data.payload, event.data.analysis || {});
+          reply({ ok: true, message: "已生成学情规划并保存记录" });
         }
       } catch (error) {
         setBackendMessage(error.message);
+        reply({ ok: false, message: error.message });
       }
     });
     return;
@@ -546,7 +565,7 @@ function setupCallPanel() {
       renderCallPanel();
     });
   });
-  callNode("CopySummaryBtn").addEventListener("click", () => copyCallText(buildCallReport(getCallState()), "已复制学情摘要。"));
+  callNode("CopySummaryBtn").addEventListener("click", copyAndSaveCallSummary);
   callNode("CopyWechatBtn").addEventListener("click", () => copyCallText(buildCallWechat(getCallState()), "已复制微信跟进内容。"));
   callNode("SaveBtn").addEventListener("click", async () => { try { await saveCallRecord(); } catch (error) { setCallMessage(error.message); } });
   callNode("ResetBtn").addEventListener("click", resetCallPanel);

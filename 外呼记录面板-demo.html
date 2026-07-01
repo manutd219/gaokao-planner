@@ -1324,15 +1324,44 @@ function postCallSnapshot(type, state){
   window.parent.postMessage({type, payload:state, analysis:callSnapshotAnalysis(state)}, targetOrigin);
 }
 
+function requestParentCallSnapshot(type, state){
+  const targetOrigin = window.location.origin === "null" ? "*" : window.location.origin;
+  const requestId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      window.removeEventListener("message", handleMessage);
+      reject(new Error("后台保存超时，请检查登录状态后重试"));
+    }, 8000);
+    function handleMessage(event){
+      if(event.origin !== window.location.origin) return;
+      if(event.data?.type !== "gaokao-planner:call-panel-result" || event.data.requestId !== requestId) return;
+      clearTimeout(timer);
+      window.removeEventListener("message", handleMessage);
+      if(event.data.ok) resolve(event.data);
+      else reject(new Error(event.data.message || "后台保存失败"));
+    }
+    window.addEventListener("message", handleMessage);
+    window.parent.postMessage({type, requestId, payload:state, analysis:callSnapshotAnalysis(state)}, targetOrigin);
+  });
+}
+
 document.getElementById("copyReport").addEventListener("click", async () => {
-  await navigator.clipboard.writeText(document.getElementById("report").value);
+  let copied = false;
+  try{
+    await navigator.clipboard.writeText(document.getElementById("report").value);
+    copied = true;
+  }catch(error){}
   const state = getState();
   if(!state.studentName){
-    alert("已复制学情摘要；填写学生姓名后才会保存到后台");
+    alert(copied ? "已复制学情摘要；填写学生姓名后才会保存到后台" : "请先填写学生姓名，当前未保存到后台");
     return;
   }
-  postCallSnapshot("gaokao-planner:save-call-summary", state);
-  alert("已复制学情摘要，并更新后台外呼记录");
+  try{
+    const result = await requestParentCallSnapshot("gaokao-planner:save-call-summary", state);
+    alert(`${copied ? "已复制学情摘要，" : "复制失败，但"}${result.message || "已更新后台外呼记录"}`);
+  }catch(error){
+    alert(`${copied ? "已复制学情摘要，但" : ""}后台未保存：${error.message}`);
+  }
 });
 document.getElementById("copyWechat").addEventListener("click", async () => {
   await navigator.clipboard.writeText(document.getElementById("wechatText").textContent);
