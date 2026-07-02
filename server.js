@@ -377,6 +377,7 @@ function clientIp(req) {
 }
 
 function loginStatus(event, now = Date.now()) {
+  if (event.forcedLogoutAt) return "强制下线";
   if (event.loggedOutAt) return "已退出";
   const lastActive = new Date(event.lastActiveAt || event.loginAt || 0).getTime();
   return now - lastActive <= ACTIVE_WINDOW_MS ? "在线" : "未活跃";
@@ -413,7 +414,7 @@ async function updateLoginActivity(loginId, patch = {}) {
 
 function loginEventsToCsv(records) {
   const rows = [
-    ["登录时间", "账号", "姓名", "角色", "状态", "最近活跃时间", "退出时间", "IP", "设备信息"],
+    ["登录时间", "账号", "姓名", "角色", "状态", "最近活跃时间", "退出时间", "强制下线时间", "IP", "设备信息"],
     ...decorateLoginEvents(records).map((record) => [
       record.loginAt,
       record.user?.username || "",
@@ -422,11 +423,33 @@ function loginEventsToCsv(records) {
       record.status || "",
       record.lastActiveAt || "",
       record.loggedOutAt || "",
+      record.forcedLogoutAt || "",
       record.ip || "",
       record.userAgent || ""
     ])
   ];
   return rows.map((row) => row.map(csvEscape).join(",")).join("\n");
+}
+
+async function forceLogoutSessions({ username = "", exceptToken = "" } = {}) {
+  const now = new Date().toISOString();
+  const removedLoginIds = [];
+  for (const [token, session] of sessions.entries()) {
+    if (token === exceptToken) continue;
+    if (username && session.user?.username !== username) continue;
+    removedLoginIds.push(session.loginId);
+    sessions.delete(token);
+  }
+  if (!removedLoginIds.length) return { count: 0 };
+  const targets = new Set(removedLoginIds.filter(Boolean));
+  const records = await readLoginEvents();
+  const nextRecords = records.map((record) => (
+    targets.has(record.id) && !record.loggedOutAt
+      ? { ...record, lastActiveAt: now, forcedLogoutAt: now }
+      : record
+  ));
+  await writeLoginEvents(nextRecords);
+  return { count: removedLoginIds.length };
 }
 
 function recordsToCsv(records) {
@@ -904,6 +927,23 @@ async function handleApi(req, res, url) {
       "Content-Disposition": "attachment; filename=login-events.csv"
     });
     res.end(`\uFEFF${loginEventsToCsv(decorated)}`);
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/login-events/force-logout") {
+    const admin = requireAdmin(req, res);
+    if (!admin) return;
+    const body = await readBody(req);
+    const username = String(body.username || "").trim();
+    const sessionInfo = getSession(req);
+    const result = await forceLogoutSessions({ username, exceptToken: sessionInfo?.token || "" });
+    sendJson(res, 200, {
+      ok: true,
+      count: result.count,
+      message: username
+        ? `已强制 ${username} 下线 ${result.count} 个会话`
+        : `已强制下线 ${result.count} 个会话，当前管理员会话已保留`
+    });
     return;
   }
 

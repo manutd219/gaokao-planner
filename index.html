@@ -2044,7 +2044,10 @@
               <h2>账号登录记录</h2>
               <p class="status-text" id="loginEventsSummary">记录账号登录、最近活跃和退出状态。</p>
             </div>
-            <button class="btn btn-secondary" id="exportLoginEventsBtn" type="button">导出登录记录</button>
+            <div class="backend-head-actions">
+              <button class="btn btn-secondary" id="forceLogoutAllBtn" type="button">强制全部下线</button>
+              <button class="btn btn-secondary" id="exportLoginEventsBtn" type="button">导出登录记录</button>
+            </div>
           </div>
           <div class="backend-tools">
             <label>账号/姓名
@@ -2064,15 +2067,16 @@
                 <option>在线</option>
                 <option>未活跃</option>
                 <option>已退出</option>
+                <option>强制下线</option>
               </select>
             </label>
           </div>
           <div class="records-table-wrap">
             <table class="records-table">
               <thead>
-                <tr><th>登录时间</th><th>账号</th><th>角色</th><th>状态</th><th>最近活跃</th><th>退出时间</th><th>IP</th><th>设备信息</th></tr>
+                <tr><th>登录时间</th><th>账号</th><th>角色</th><th>状态</th><th>最近活跃</th><th>退出/下线时间</th><th>IP</th><th>设备信息</th><th>操作</th></tr>
               </thead>
-              <tbody id="loginEventsBody"><tr><td colspan="8">暂无登录记录。</td></tr></tbody>
+              <tbody id="loginEventsBody"><tr><td colspan="9">暂无登录记录。</td></tr></tbody>
             </table>
           </div>
         </section>
@@ -4186,6 +4190,7 @@
     function loginEventStatusClass(status) {
       if (status === "在线") return "priority-a";
       if (status === "未活跃") return "priority-pending";
+      if (status === "强制下线") return "priority-b";
       return "priority-d";
     }
 
@@ -4217,11 +4222,14 @@
           <td>${escapeHtml(roleLabel(record.user?.role))}</td>
           <td><span class="tier-badge ${escapeHtml(loginEventStatusClass(record.status))}">${escapeHtml(record.status || "-")}</span></td>
           <td>${escapeHtml(formatTime(record.lastActiveAt))}</td>
-          <td>${escapeHtml(record.loggedOutAt ? formatTime(record.loggedOutAt) : "-")}</td>
+          <td>${escapeHtml(record.forcedLogoutAt ? formatTime(record.forcedLogoutAt) : record.loggedOutAt ? formatTime(record.loggedOutAt) : "-")}</td>
           <td>${escapeHtml(record.ip || "-")}</td>
           <td><details class="summary-details"><summary>查看设备</summary><pre>${escapeHtml(record.userAgent || "未记录")}</pre></details></td>
+          <td>${["在线", "未活跃"].includes(record.status) && record.user?.username
+            ? `<button class="btn btn-secondary" type="button" data-force-logout-user="${escapeHtml(record.user.username)}">强制该账号下线</button>`
+            : `<span class="status-text">-</span>`}</td>
         </tr>
-      `).join("") : `<tr><td colspan="8">暂无符合筛选条件的登录记录。</td></tr>`;
+      `).join("") : `<tr><td colspan="9">暂无符合筛选条件的登录记录。</td></tr>`;
     }
 
     async function loadLoginEvents() {
@@ -4262,6 +4270,25 @@
         link.href = URL.createObjectURL(blob);
         link.click();
         URL.revokeObjectURL(link.href);
+      } catch (error) {
+        setBackendMessage(error.message);
+      }
+    }
+
+    async function forceLogoutUsers(username = "") {
+      if (!currentUser || currentUser.role !== "admin") {
+        setBackendMessage("只有管理员可以强制账号下线。");
+        return;
+      }
+      const targetText = username ? `账号 ${username}` : "除当前管理员外的所有在线账号";
+      if (!confirm(`确认强制${targetText}下线？对方需要重新登录。`)) return;
+      try {
+        const payload = await apiFetch("/api/login-events/force-logout", {
+          method: "POST",
+          body: JSON.stringify({ username })
+        });
+        setBackendMessage(payload.message || "已执行强制下线。");
+        await loadLoginEvents();
       } catch (error) {
         setBackendMessage(error.message);
       }
@@ -4392,6 +4419,7 @@
     document.querySelector("#exportTeacherRecordsBtn").addEventListener("click", exportTeacherCallRecords);
     document.querySelector("#exportUserDashboardBtn").addEventListener("click", exportUserDashboard);
     document.querySelector("#exportLoginEventsBtn").addEventListener("click", exportLoginEvents);
+    document.querySelector("#forceLogoutAllBtn").addEventListener("click", () => forceLogoutUsers(""));
     document.querySelector("#recordSearch").addEventListener("input", renderRecords);
     document.querySelector("#recordStatusFilter").addEventListener("change", renderRecords);
     document.querySelector("#teacherUserFilter").addEventListener("change", renderAdminTeacherCallRecords);
@@ -4402,6 +4430,11 @@
     document.querySelector("#loginEventAccountFilter").addEventListener("input", renderLoginEvents);
     document.querySelector("#loginEventRoleFilter").addEventListener("change", renderLoginEvents);
     document.querySelector("#loginEventStatusFilter").addEventListener("change", renderLoginEvents);
+    document.querySelector("#loginEventsBody").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-force-logout-user]");
+      if (!button) return;
+      forceLogoutUsers(button.dataset.forceLogoutUser || "");
+    });
     document.querySelector("#userDashboardBody").addEventListener("click", (event) => {
       const button = event.target.closest("[data-dashboard-lookup]");
       if (!button) return;
